@@ -129,7 +129,12 @@ export async function buildFile(sum) {
   pub.ui = S.ui; pub.uiAt = S.uiAt || 0; pub.prefs = S.prefs;
   const key = getKey();
   const file = { app: 'krugi', v: 3, who: S.me, at: now(), profile: S.people[S.me], profileAt: S.profileAt || 0, pub, sec: null };
-  if (key && cryptoOk) file.sec = await seal(sec, key);
+  if (foreignSec && sync.needKey) {
+    // В базе лежит личное, зашифрованное другим ключом. Молча затереть его
+    // нельзя — там могут быть записи с другого устройства. Переносим как есть
+    // и ждём решения человека: принести тот ключ или начать личное заново.
+    file.sec = foreignSec; file.secLocal = 1;
+  } else if (key && cryptoOk) file.sec = await seal(sec, key);
   else { file.sec = foreignSec; file.secLocal = 1; }   // своё личное остаётся на устройстве
   return file;
 }
