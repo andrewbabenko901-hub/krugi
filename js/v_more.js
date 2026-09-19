@@ -6,6 +6,7 @@ import { pick, tgl, av } from './ui.js';
 import { BADGES, levelOf, xpFor } from './model.js';
 import { header, circleSub } from './parts.js';
 import { sync, getCfg, getKey, ready, DEFAULT_CFG, TOKEN_URL, makeSetupLink } from './sync.js';
+import { qrSvg } from './qr.js';
 import { cryptoOk } from './crypto.js';
 import { WIDGETS } from './v_main.js';
 
@@ -189,6 +190,25 @@ export function sheetDash() {
 }
 
 /* ---------------- синхронизация ---------------- */
+/* Код привязки: QR плюс та же ссылка текстом. */
+function linkBox() {
+  if (!nav.link) return '';
+  const mine = nav.link === 'mine';
+  const link = makeSetupLink({ withKey: mine, who: mine ? W.me : W.you });
+  if (!link) return '';
+  let qr = '';
+  try { qr = qrSvg(link); } catch { qr = ''; }
+  return '<div class="sub" style="margin-top:.7rem">' +
+    (mine ? 'Код для своего устройства — с ключом личного' : 'Код для ' + esc(W.gen(W.you)) + ' — без ключа личного') + ':</div>' +
+    (qr ? '<div class="qr">' + qr + '</div>' : '') +
+    '<div class="code">' + esc(link) + '</div>' +
+    '<div class="srow"><button data-a="linkcopy" data-v="' + nav.link + '">Скопировать ссылку</button>' +
+    '<button data-a="linkhide">Скрыть код</button></div>' +
+    '<div class="sub">Наведи камеру нового устройства на код — откроется приложение, останется нажать одну кнопку. ' +
+    'Ссылку можно и переслать, но открывать её надо в обычном браузере (Safari, Chrome), а не внутри мессенджера. ' +
+    'Это как пароль: после подключения сообщение лучше удалить.</div>';
+}
+
 function vSync() {
   const c = getCfg() || {}, key = getKey();
   const owner = c.owner || DEFAULT_CFG.owner, repo = c.repo || DEFAULT_CFG.repo;
@@ -200,13 +220,13 @@ function vSync() {
       (W.hasPartner ? ' Данные ' + esc(W.gen(W.you)) + ' получены.' : ' ' + esc(W.name(W.you)) + ' ещё не подключилась.') + '</div>';
 
   const setup = ready()
-    ? '<div class="card sec"><h3>📲 Настроить другой телефон</h3><div class="sub">Одна ссылка вместо всей возни: откроешь её на другом телефоне — ' +
-      'он подключится сам, ничего вводить не надо.</div>' +
-      '<div class="srow"><button class="k" data-a="mklink" data-v="partner">Ссылка для ' + esc(W.gen(W.you)) + '</button>' +
-      '<button data-a="mklink" data-v="mine">Ссылка для моего второго</button></div>' +
-      '<div id="linkbox"></div>' +
+    ? '<div class="card sec"><h3>📲 Добавить устройство</h3><div class="sub">Телефон, планшет или компьютер: наводишь камеру на код — ' +
+      'открывается приложение и подключается само, вводить ничего не надо.</div>' +
+      '<div class="srow"><button class="k" data-a="mklink" data-v="partner">Для ' + esc(W.gen(W.you)) + '</button>' +
+      '<button class="k" data-a="mklink" data-v="mine">Для моего устройства</button></div>' +
+      linkBox() +
       '<div class="sub">Для ' + esc(W.gen(W.you)) + ' ключ личного не передаётся — у ' + W.say(W.you, 'него', 'неё') +
-      ' будет свой. Для своего второго телефона ключ едет вместе со ссылкой, иначе личное там не откроется.</div></div>'
+      ' будет свой. Для своих устройств ключ едет вместе с кодом, иначе личное там не откроется.</div></div>'
     : '';
 
   const keyBox = !cryptoOk
@@ -216,7 +236,10 @@ function vSync() {
       (key ? '<div class="code" id="keyshow" style="margin-top:.5rem">••••••••••••••••••••••••</div>' +
              '<div class="srow"><button data-a="keyshow">Показать</button><button data-a="keycopy">Скопировать</button></div>'
            : '<div class="srow"><button class="k" data-a="keynew">Создать ключ</button></div>') +
-      (sync.needKey ? '<div class="alert"><b>!</b><div>В базе есть твоё личное, зашифрованное другим ключом. Открой на первом телефоне «Ссылка для моего второго» — она принесёт нужный ключ.</div></div>' : '') +
+      (sync.needKey ? '<div class="alert"><b>!</b><div>В базе есть личное, зашифрованное другим ключом — обычно так бывает, ' +
+        'если первый вход случайно сделали во встроенном браузере мессенджера. Возьми код «Для моего устройства» на том устройстве, ' +
+        'где приложение уже работает, — он принесёт нужный ключ. Если там ничего ценного не было, начни личное заново.</div></div>' +
+        '<div class="srow"><button class="w" data-a="keyreset">Начать личное заново</button></div>' : '') +
       '</div>' : '';
 
   return header('общая база', 'Синхронизация', back) + st + setup +

@@ -14,7 +14,7 @@ import { F, E, Q, BUILTIN_TPL, planDate, listCircles } from './v_plan.js';
 import { sheetWkSet } from './v_week.js';
 import { sheetDash } from './v_more.js';
 import { sync, setCfg, getCfg, getKey, setKey, testConnection, cycle, start as startSync, ready,
-         DEFAULT_CFG, makeSetupLink, readSetupLink, clearSetupLink, applySetup } from './sync.js';
+         DEFAULT_CFG, makeSetupLink, readSetupLink, clearSetupLink, applySetup, resetSecret } from './sync.js';
 import { newKey, keyLooksValid, cryptoOk } from './crypto.js';
 import { DEFG, DEFS, EMO, PAL } from './parts.js';
 
@@ -494,20 +494,13 @@ function formCfg() {
 function gmsg(html) { const m = document.getElementById('gmsg'); if (m) m.innerHTML = html; }
 /* ---------- настройка другого телефона одной ссылкой ---------- */
 A.mklink = d => {
-  const mine = d.v === 'mine';
-  const link = makeSetupLink({ withKey: mine, who: mine ? S.me : other(S.me) });
-  const box = document.getElementById('linkbox');
-  if (!link || !box) { toast('Сначала подключись сам.'); return; }
-  box.innerHTML = '<div class="sub" style="margin-top:.6rem">Ссылка для ' +
-    (mine ? 'второго телефона ' + W.name(S.me) + ' (с ключом личного)' : 'телефона ' + W.gen(other(S.me)) + ' (без ключа)') + ':</div>' +
-    '<div class="code" style="margin-top:.4rem">' + link.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])) + '</div>' +
-    '<div class="srow"><button data-a="linkcopy">Скопировать ссылку</button></div>' +
-    '<div class="sub">Открой её на том телефоне — он подключится в одно нажатие. Способ передать: ' +
-    '«Отправить на свои устройства» в меню Chrome, либо личным сообщением, которое потом удалить. Это как пароль.</div>';
-  window.__krugiLink = link;
+  if (!ready()) { toast('Сначала подключись сам.'); return; }
+  nav.link = d.v; render(); buzz(8);
 };
-A.linkcopy = async () => {
-  try { await navigator.clipboard.writeText(window.__krugiLink || ''); toast('Ссылка скопирована. Она как пароль — не оставляй её в переписке.'); }
+A.linkhide = () => { nav.link = null; render(); };
+A.linkcopy = async d => {
+  const link = makeSetupLink({ withKey: d.v === 'mine', who: d.v === 'mine' ? S.me : other(S.me) });
+  try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована. Она как пароль — не оставляй её в переписке.'); }
   catch { toast('Скопируй ссылку вручную из рамки.'); }
 };
 A.setupgo = d => {
@@ -519,6 +512,14 @@ A.setupgo = d => {
   rebuild(); changed('local'); render(); toast('Подключено. Забираю общие данные…');
 };
 A.setupno = () => { pendingSetup = null; clearSetupLink(); render(); };
+A.setupcopy = async () => {
+  try { await navigator.clipboard.writeText(location.href); toast('Ссылка скопирована — открой её в Safari или Chrome.'); }
+  catch { toast('Скопируй адрес из адресной строки и открой его в обычном браузере.'); }
+};
+A.keyreset = (d, el) => {
+  if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = 'Точно? Старое личное пропадёт'; return; }
+  resetSecret(); toast('Личное начато заново.'); render();
+};
 
 A.gtest = async () => {
   const c = formCfg(); if (!c.owner || !c.token) { gmsg('<div class="alert"><b>!</b><div>Нужны логин и токен.</div></div>'); return; }

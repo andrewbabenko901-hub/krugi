@@ -10,6 +10,7 @@ export const nav = {
   more: 'menu',          // menu | stat | badges | set | sync | help
   plan: { date: null, mode: 'task' },
   pledgeTab: 'me',
+  link: null,            // какой код привязки показан: 'partner' | 'mine'
   wide: false,
 };
 

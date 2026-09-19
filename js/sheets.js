@@ -279,7 +279,10 @@ export function vSetupLink(p, me) {
       : '<div class="who"><button data-a="setupgo" data-v="andrey"><span class="av" style="background:#2F5BD0">А</span><b>Андрей</b><small>мой телефон</small></button>' +
         '<button data-a="setupgo" data-v="diana"><span class="av" style="background:#B0517E">Д</span><b>Диана</b><small>мой телефон</small></button></div>') +
     '<button class="big-btn alt" data-a="setupno">Не подключать</button>' +
-    '<div class="sub">Ссылка — как пароль: после подключения удали её из переписки. Из адреса телефона она уберётся сама.</div></div>';
+    '<div class="sub">Если это окно открылось внутри мессенджера, лучше перенести его в обычный браузер: ' +
+    'меню ⋮ → «Открыть в Safari» (или в Chrome). Иначе приложение останется жить внутри мессенджера, и с домашнего экрана его не будет.</div>' +
+    '<div class="srow"><button data-a="setupcopy">Скопировать ссылку для браузера</button></div>' +
+    '<div class="sub">Ссылка — как пароль: после подключения удали сообщение. Из адреса она уберётся сама.</div></div>';
 }
 
 /* ---------- первый запуск ---------- */

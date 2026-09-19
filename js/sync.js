@@ -294,6 +294,16 @@ export function applySetup(p) {
   start();
 }
 
+/** Личное в базе зашифровано ключом, которого здесь нет (например, первый
+    вход случайно сделали во встроенном браузере мессенджера). Начинаем
+    личное заново: новый ключ, старый шифр выбрасывается. */
+export function resetSecret() {
+  foreignSec = null;
+  setKey(newKey());
+  sync.needKey = false;
+  schedulePush(0);
+}
+
 /* ---------- фон: опрос пары ---------- */
 let poll = null;
 export function start() {
