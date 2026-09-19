@@ -279,8 +279,10 @@ export function makeSetupLink(opts = {}) {
   const b64 = b64enc(utf8enc(JSON.stringify(payload))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return location.origin + location.pathname + '#n=' + b64;
 }
-export function readSetupLink() {
-  const m = (location.hash || '').match(/[#&]n=([A-Za-z0-9\-_]+)/);
+/** Разобрать код подключения из любого текста: хоть из адреса, хоть из
+    вставленной ссылки, хоть из одного только хвоста после «#n=». */
+export function parseSetupText(text) {
+  const m = String(text || '').match(/(?:[#&]n=)?([A-Za-z0-9\-_]{40,})\s*$/);
   if (!m) return null;
   try {
     const s = m[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -288,6 +290,7 @@ export function readSetupLink() {
     return j && j.t ? { owner: j.o, repo: j.r, dir: j.d || 'data', token: j.t, key: j.k || '', who: j.w || '' } : null;
   } catch { return null; }
 }
+export function readSetupLink() { return parseSetupText(location.hash || ''); }
 export function clearSetupLink() {
   try { history.replaceState(null, '', location.pathname + location.search); } catch {}
 }

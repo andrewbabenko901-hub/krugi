@@ -264,6 +264,16 @@ export function sheetTplSave(date) {
     '<div class="srow"><button class="k" data-a="tpladd" data-v="' + esc(date) + '">Сохранить</button><button data-a="close">Отмена</button></div>';
 }
 
+/** Блок «вставить код подключения». Нужен там, где ссылку открыть нельзя:
+    приложение с домашнего экрана айфона живёт отдельно от Safari. */
+export function pasteBlock(title) {
+  return '<div class="card sec"><h3>' + (title || '🔗 Уже настроено на другом устройстве?') + '</h3>' +
+    '<div class="sub" style="margin-top:0">Скопируй ссылку подключения (на настроенном устройстве: «Ещё → Синхронизация → Добавить устройство → Скопировать ссылку») и вставь сюда.</div>' +
+    '<button class="big-btn" data-a="pastelink">Вставить из буфера</button>' +
+    '<div class="fld"><label>или вставь вручную</label><input type="text" id="pastefield" placeholder="https://…/krugi/#n=…" autocapitalize="off" autocomplete="off" spellcheck="false"></div>' +
+    '<button class="big-btn alt" data-a="pastego">Подключить</button></div>';
+}
+
 /* ---------- подключение по ссылке ----------
    Человек открыл ссылку, присланную со второго устройства: спрашиваем
    только одно — чей это телефон. Всё остальное уже в ссылке. */
@@ -286,13 +296,15 @@ export function vSetupLink(p, me) {
 }
 
 /* ---------- первый запуск ---------- */
-export function vHello(old) {
+export function vHello(old, opts) {
   return '<div class="hd"><div><div class="dt">ПЕРВЫЙ ЗАПУСК</div><h1>Чей это телефон?</h1></div></div>' +
+    (opts && opts.standalone ? '<div class="infobox">Приложение открыто с домашнего экрана. На айфоне у него своё хранилище, ' +
+      'отдельное от Safari, — поэтому настройки надо перенести сюда один раз: кнопка ниже.</div>' : '') +
     '<div class="card sec"><div class="sub" style="margin-top:0">У каждого свой клиент: свои круги, своё личное, свой главный экран. Общее видно обоим, когда подключите синхронизацию.</div>' +
     '<div class="who"><button data-a="hello" data-v="andrey"><span class="av" style="background:#2F5BD0">А</span><b>Андрей</b><small>мой телефон</small></button>' +
     '<button data-a="hello" data-v="diana"><span class="av" style="background:#B0517E">Д</span><b>Диана</b><small>мой телефон</small></button></div>' +
     (old ? '<div class="infobox">На этом телефоне есть данные прошлой версии («' + esc(old.me || '') + '»: ' + (old.circles || []).length + ' кругов, ' + (old.tasks || []).length +
-      ' дел). Они перенесутся автоматически.</div>' : '') + '</div>' +
+      ' дел). Они перенесутся автоматически.</div>' : '') + '</div>' + pasteBlock() +
     '<div class="card sec"><h3>Что внутри</h3><div class="sub">⭕ круги дел, счётчиков, покупок и настроения · 📅 неделя с галочками · 🔒 печать плана и страховки · ' +
     '🤝 просьбы, обещания и награды друг другу · 🛍 карточки покупок и подарков · 📍 совместные планы · 🏅 опыт, уровни, значки · 🔐 личное шифруется.</div></div>';
 }

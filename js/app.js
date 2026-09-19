@@ -17,6 +17,8 @@ import { inbox, feed } from './model.js';
 import { todayKey } from './util.js';
 
 const $v = () => document.getElementById('v');
+/* Приложение открыто с домашнего экрана (у айфона это отдельное хранилище). */
+const isStandalone = () => !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches);
 
 /* ---------- оформление ---------- */
 const darkMq = matchMedia('(prefers-color-scheme: dark)');
@@ -44,7 +46,7 @@ function render(force) {
   applyUI();
   const set = getPending();
   if (set) { $v().innerHTML = vSetupLink(set, S && S.me); navState(); return; }
-  if (!S) { $v().innerHTML = vHello(oldPrototype()); navState(); return; }
+  if (!S) { $v().innerHTML = vHello(oldPrototype(), { standalone: isStandalone() }); navState(); return; }
   if (!force && typing()) { pending = true; return; }
   pending = false;
   if (!W) rebuild();

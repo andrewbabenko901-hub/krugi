@@ -14,7 +14,7 @@ import { F, E, Q, BUILTIN_TPL, planDate, listCircles } from './v_plan.js';
 import { sheetWkSet } from './v_week.js';
 import { sheetDash } from './v_more.js';
 import { sync, setCfg, getCfg, getKey, setKey, testConnection, cycle, start as startSync, ready,
-         DEFAULT_CFG, makeSetupLink, readSetupLink, clearSetupLink, applySetup, resetSecret } from './sync.js';
+         DEFAULT_CFG, makeSetupLink, readSetupLink, parseSetupText, clearSetupLink, applySetup, resetSecret } from './sync.js';
 import { newKey, keyLooksValid, cryptoOk } from './crypto.js';
 import { DEFG, DEFS, EMO, PAL } from './parts.js';
 
@@ -512,6 +512,31 @@ A.setupgo = d => {
   rebuild(); changed('local'); render(); toast('Подключено. Забираю общие данные…');
 };
 A.setupno = () => { pendingSetup = null; clearSetupLink(); render(); };
+/* Вставка кода подключения — для айфона с домашнего экрана и для случая,
+   когда ссылка пришла текстом. */
+function takeSetup(text, where) {
+  const p = parseSetupText(text);
+  if (!p) { toast('Это не похоже на код подключения. Скопируй ссылку целиком.'); return; }
+  pendingSetup = p;
+  if (S) { render(); toast('Код принят — скажи, чей это телефон.'); }
+  else render();
+  void where;
+}
+A.pastelink = async () => {
+  try {
+    const t = await navigator.clipboard.readText();
+    if (t) return takeSetup(t);
+    toast('В буфере пусто. Скопируй ссылку и нажми ещё раз.');
+  } catch {
+    toast('Браузер не дал прочитать буфер — вставь ссылку в поле ниже.');
+    const f = document.getElementById('pastefield'); if (f) f.focus();
+  }
+};
+A.pastego = () => {
+  const f = document.getElementById('pastefield');
+  takeSetup(f ? f.value : '');
+};
+
 A.setupcopy = async () => {
   try { await navigator.clipboard.writeText(location.href); toast('Ссылка скопирована — открой её в Safari или Chrome.'); }
   catch { toast('Скопируй адрес из адресной строки и открой его в обычном браузере.'); }
