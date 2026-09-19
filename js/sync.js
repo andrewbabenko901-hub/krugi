@@ -24,8 +24,10 @@ const API = 'https://api.github.com';
    видно всем, кто откроет приложение. Секрет — только токен. */
 export const DEFAULT_CFG = { owner: 'andrewbabenko901-hub', repo: 'krugi-data', dir: 'data' };
 
-/* Готовая форма токена на GitHub: остаётся выбрать репозиторий и права. */
-export const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
+/* Готовая форма токена на GitHub. Имя, срок и права проставляются прямо в
+   адресе — человеку остаётся выбрать репозиторий и нажать «Generate token». */
+export const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new' +
+  '?name=krugi-telefon&description=Krugi&contents=write&expires_in=none&target_name=' + DEFAULT_CFG.owner;
 const LS_CFG = 'krugi3.sync', LS_KEY = me => 'krugi3.key.' + me, LS_META = me => 'krugi3.meta.' + me;
 
 export function getCfg() { try { return JSON.parse(localStorage.getItem(LS_CFG) || 'null'); } catch { return null; } }

@@ -222,9 +222,9 @@ function vSync() {
   return header('общая база', 'Синхронизация', back) + st + setup +
     '<div class="card sec"><h3>Подключение вручную</h3>' +
     '<div class="sub" style="margin-top:0">Нужно один раз на первом телефоне или на компьютере. Дальше — ссылкой.</div>' +
-    '<ol class="steps"><li>Нажми «Создать токен» — откроется GitHub. Там: <b>Only select repositories → ' + esc(repo) +
-    '</b>, затем <b>Add permissions → Contents → Read and write</b>, внизу <b>Generate token</b>.</li>' +
-    '<li>Скопируй показанный токен и вставь его сюда.</li></ol>' +
+    '<ol class="steps"><li>Нажми «Создать токен» — откроется GitHub с уже заполненной формой. ' +
+    'Там остаётся выбрать <b>Only select repositories → ' + esc(repo) + '</b> и нажать зелёную <b>Generate token</b>.</li>' +
+    '<li>Скопируй показанный токен (его показывают один раз) и вставь сюда.</li></ol>' +
     '<div class="srow"><a href="' + TOKEN_URL + '" target="_blank" rel="noopener noreferrer">Создать токен на GitHub ↗</a></div>' +
     '<div class="fld"><label>Токен</label><input type="password" id="gtoken" value="' + esc(c.token || '') + '" placeholder="github_pat_…" autocomplete="off"></div>' +
     '<div class="srow"><button class="k" data-a="gsave">Подключить</button>' + (ready() ? '<button data-a="gnow">Сверить сейчас</button>' : '') + '</div>' +
