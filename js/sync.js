@@ -14,11 +14,18 @@
            отметки, покупки, планы, обещания, ответы, сводка по дням;
      sec — всё личное, зашифрованное ключом, которого у пары нет.
    ============================================================ */
-import { b64enc, b64dec, utf8enc, utf8dec, seal, open, cryptoOk } from './crypto.js';
+import { b64enc, b64dec, utf8enc, utf8dec, seal, open, cryptoOk, newKey } from './crypto.js';
 import { S, P, LISTS, setPartner, changed, other, saveLocal } from './store.js';
 import { now } from './util.js';
 
 const API = 'https://api.github.com';
+
+/* Куда подключаться по умолчанию. Это не секрет: имя владельца и репозитория
+   видно всем, кто откроет приложение. Секрет — только токен. */
+export const DEFAULT_CFG = { owner: 'andrewbabenko901-hub', repo: 'krugi-data', dir: 'data' };
+
+/* Готовая форма токена на GitHub: остаётся выбрать репозиторий и права. */
+export const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 const LS_CFG = 'krugi3.sync', LS_KEY = me => 'krugi3.key.' + me, LS_META = me => 'krugi3.meta.' + me;
 
 export function getCfg() { try { return JSON.parse(localStorage.getItem(LS_CFG) || 'null'); } catch { return null; } }
@@ -247,6 +254,42 @@ export async function testConnection(c) {
   } catch (e) {
     return { ok: false, msg: e.message };
   } finally { if (!c.keep) setCfg(old); }
+}
+
+/* ============================================================
+   Настройка второго телефона одной ссылкой.
+
+   Ссылка вида .../krugi/#n=<данные>. Якорь (после #) браузер на сервер
+   не отправляет, поэтому токен не попадает ни в логи GitHub Pages, ни в
+   историю запросов. Приложение читает его один раз и тут же вычищает из
+   адресной строки.
+   ============================================================ */
+export function makeSetupLink(opts = {}) {
+  const c = getCfg(); if (!c) return '';
+  const payload = { o: c.owner, r: c.repo, d: c.dir || 'data', t: c.token };
+  if (opts.who) payload.w = opts.who;
+  if (opts.withKey) payload.k = getKey();
+  const b64 = b64enc(utf8enc(JSON.stringify(payload))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return location.origin + location.pathname + '#n=' + b64;
+}
+export function readSetupLink() {
+  const m = (location.hash || '').match(/[#&]n=([A-Za-z0-9\-_]+)/);
+  if (!m) return null;
+  try {
+    const s = m[1].replace(/-/g, '+').replace(/_/g, '/');
+    const j = JSON.parse(utf8dec(b64dec(s + '==='.slice((s.length + 3) % 4))));
+    return j && j.t ? { owner: j.o, repo: j.r, dir: j.d || 'data', token: j.t, key: j.k || '', who: j.w || '' } : null;
+  } catch { return null; }
+}
+export function clearSetupLink() {
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+}
+export function applySetup(p) {
+  setCfg({ owner: p.owner, repo: p.repo, dir: p.dir, token: p.token });
+  if (p.key) setKey(p.key);
+  else if (!getKey() && cryptoOk) setKey(newKey());
+  clearSetupLink();
+  start();
 }
 
 /* ---------- фон: опрос пары ---------- */

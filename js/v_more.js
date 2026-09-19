@@ -5,7 +5,7 @@ import { S } from './store.js';
 import { pick, tgl, av } from './ui.js';
 import { BADGES, levelOf, xpFor } from './model.js';
 import { header, circleSub } from './parts.js';
-import { sync, getCfg, getKey, ready } from './sync.js';
+import { sync, getCfg, getKey, ready, DEFAULT_CFG, TOKEN_URL, makeSetupLink } from './sync.js';
 import { cryptoOk } from './crypto.js';
 import { WIDGETS } from './v_main.js';
 
@@ -191,35 +191,52 @@ export function sheetDash() {
 /* ---------------- синхронизация ---------------- */
 function vSync() {
   const c = getCfg() || {}, key = getKey();
-  const st = !ready() ? '<div class="infobox">Сейчас всё живёт только на этом телефоне. Подключи общую базу — и ' + esc(W.name(W.you)) + ' увидит общие круги, просьбы, обещания и планы.</div>'
+  const owner = c.owner || DEFAULT_CFG.owner, repo = c.repo || DEFAULT_CFG.repo;
+  const st = !ready()
+    ? '<div class="infobox">Сейчас всё живёт только на этом телефоне. Подключи общую базу — и ' + esc(W.name(W.you)) +
+      ' увидит общие круги, просьбы, обещания и планы.</div>'
     : sync.st === 'err' ? '<div class="alert"><b>!</b><div>' + esc(sync.msg) + '</div></div>'
-    : '<div class="okbox">Подключено к ' + esc(c.owner + '/' + c.repo) + '. Последняя сверка: ' + esc(relTime(sync.pulledAt)) + '.' +
+    : '<div class="okbox">Подключено к ' + esc(owner + '/' + repo) + '. Последняя сверка: ' + esc(relTime(sync.pulledAt)) + '.' +
       (W.hasPartner ? ' Данные ' + esc(W.gen(W.you)) + ' получены.' : ' ' + esc(W.name(W.you)) + ' ещё не подключилась.') + '</div>';
-  const keyBox = !cryptoOk ? '<div class="alert"><b>!</b><div>Браузер не даёт шифровать (страница открыта не по https). Личное не будет уходить в общую базу вовсе.</div></div>'
-    : '<div class="card sec"><h3>🔑 Ключ личного</h3><div class="sub">Всё с замком шифруется этим ключом перед отправкой. У ' + esc(W.gen(W.you)) +
-      ' его нет, поэтому личное не прочитать даже через GitHub. На второй свой телефон перенеси тот же ключ.</div>' +
-      (key ? '<div class="code" id="keyshow" style="margin-top:.5rem">••••••••••••••••••••••••</div><div class="srow"><button data-a="keyshow">Показать</button><button data-a="keycopy">Скопировать</button></div>'
-           : '<div class="sub"><b>Ключа нет.</b> Создай новый (первое устройство) или вставь ключ со своего другого телефона.</div><div class="srow"><button class="k" data-a="keynew">Создать ключ</button></div>') +
-      (sync.needKey ? '<div class="alert"><b>!</b><div>В базе есть твоё личное, зашифрованное другим ключом. Вставь ключ со своего первого устройства.</div></div>' : '') +
-      '<div class="fld"><label>Вставить ключ с другого своего устройства</label><input type="password" id="keyin" placeholder="ключ" autocomplete="off"></div>' +
-      '<div class="srow"><button data-a="keyset">Использовать этот ключ</button></div></div>';
-  return header('общая база', 'Синхронизация', back) + st +
-    '<div class="card sec"><h3>Подключение</h3>' +
-    '<div class="two"><div class="fld"><label>Владелец (логин GitHub)</label><input type="text" id="gowner" value="' + esc(c.owner || '') + '" placeholder="andrey-github" autocomplete="off" autocapitalize="off"></div>' +
-    '<div class="fld"><label>Репозиторий данных</label><input type="text" id="grepo" value="' + esc(c.repo || 'krugi-data') + '" autocapitalize="off"></div></div>' +
-    '<div class="fld"><label>Токен доступа</label><input type="password" id="gtoken" value="' + esc(c.token || '') + '" placeholder="github_pat_…" autocomplete="off"></div>' +
-    '<div class="sub">Токен хранится только в этом браузере. В код приложения и в сам репозиторий он не попадает.</div>' +
-    '<div class="srow"><button data-a="gtest">Проверить</button><button class="k" data-a="gsave">Сохранить и подключить</button></div>' +
-    (ready() ? '<div class="srow"><button data-a="gnow">Синхронизировать сейчас</button><button class="w" data-a="goff">Отключить</button></div>' : '') +
+
+  const setup = ready()
+    ? '<div class="card sec"><h3>📲 Настроить другой телефон</h3><div class="sub">Одна ссылка вместо всей возни: откроешь её на другом телефоне — ' +
+      'он подключится сам, ничего вводить не надо.</div>' +
+      '<div class="srow"><button class="k" data-a="mklink" data-v="partner">Ссылка для ' + esc(W.gen(W.you)) + '</button>' +
+      '<button data-a="mklink" data-v="mine">Ссылка для моего второго</button></div>' +
+      '<div id="linkbox"></div>' +
+      '<div class="sub">Для ' + esc(W.gen(W.you)) + ' ключ личного не передаётся — у ' + W.say(W.you, 'него', 'неё') +
+      ' будет свой. Для своего второго телефона ключ едет вместе со ссылкой, иначе личное там не откроется.</div></div>'
+    : '';
+
+  const keyBox = !cryptoOk
+    ? '<div class="alert"><b>!</b><div>Браузер не даёт шифровать (страница открыта не по https). Личное не будет уходить в общую базу вовсе.</div></div>'
+    : ready() ? '<div class="card sec"><h3>🔑 Ключ личного</h3><div class="sub">Всё с замком шифруется этим ключом перед отправкой. У ' +
+      esc(W.gen(W.you)) + ' его нет, поэтому личное не прочитать даже через GitHub.</div>' +
+      (key ? '<div class="code" id="keyshow" style="margin-top:.5rem">••••••••••••••••••••••••</div>' +
+             '<div class="srow"><button data-a="keyshow">Показать</button><button data-a="keycopy">Скопировать</button></div>'
+           : '<div class="srow"><button class="k" data-a="keynew">Создать ключ</button></div>') +
+      (sync.needKey ? '<div class="alert"><b>!</b><div>В базе есть твоё личное, зашифрованное другим ключом. Открой на первом телефоне «Ссылка для моего второго» — она принесёт нужный ключ.</div></div>' : '') +
+      '</div>' : '';
+
+  return header('общая база', 'Синхронизация', back) + st + setup +
+    '<div class="card sec"><h3>Подключение вручную</h3>' +
+    '<div class="sub" style="margin-top:0">Нужно один раз на первом телефоне или на компьютере. Дальше — ссылкой.</div>' +
+    '<ol class="steps"><li>Нажми «Создать токен» — откроется GitHub. Там: <b>Only select repositories → ' + esc(repo) +
+    '</b>, затем <b>Add permissions → Contents → Read and write</b>, внизу <b>Generate token</b>.</li>' +
+    '<li>Скопируй показанный токен и вставь его сюда.</li></ol>' +
+    '<div class="srow"><a href="' + TOKEN_URL + '" target="_blank" rel="noopener noreferrer">Создать токен на GitHub ↗</a></div>' +
+    '<div class="fld"><label>Токен</label><input type="password" id="gtoken" value="' + esc(c.token || '') + '" placeholder="github_pat_…" autocomplete="off"></div>' +
+    '<div class="srow"><button class="k" data-a="gsave">Подключить</button>' + (ready() ? '<button data-a="gnow">Сверить сейчас</button>' : '') + '</div>' +
+    '<details style="margin-top:.6rem"><summary class="sub">Другой репозиторий</summary>' +
+    '<div class="two"><div class="fld"><label>Владелец</label><input type="text" id="gowner" value="' + esc(owner) + '" autocapitalize="off"></div>' +
+    '<div class="fld"><label>Репозиторий</label><input type="text" id="grepo" value="' + esc(repo) + '" autocapitalize="off"></div></div></details>' +
+    (ready() ? '<div class="srow"><button class="w" data-a="goff">Отключить этот телефон</button></div>' : '') +
     '<div id="gmsg"></div></div>' + keyBox +
-    '<div class="card sec"><h3>Как подключить (один раз на двоих)</h3><ol class="steps">' +
-    '<li>На github.com создай <b>приватный</b> репозиторий <code>krugi-data</code> (Add a README — можно поставить).</li>' +
-    '<li>Settings → Developer settings → <b>Fine-grained tokens</b> → Generate new token. Repository access: <b>Only select repositories</b> → krugi-data. ' +
-    'Permissions → Repository → <b>Contents: Read and write</b>. Срок — год.</li>' +
-    '<li>Сделай <b>два</b> таких токена: один для своего телефона, второй для телефона ' + esc(W.gen(W.you)) + '.</li>' +
-    '<li>На каждом телефоне: вкладка «Ещё» → «Синхронизация», впиши логин, имя репозитория и свой токен, нажми «Сохранить и подключить».</li>' +
-    '<li>Первым делом на своём телефоне нажми «Создать ключ» — для личного.</li></ol>' +
-    '<div class="sub">Каждый пишет только в свой файл (data/andrey.json, data/diana.json), поэтому два телефона никогда не перетирают друг друга.</div></div>';
+    '<div class="card sec"><h3>Что где лежит</h3><div class="sub">Приложение — публичный репозиторий <b>krugi</b>, там только код. ' +
+    'Данные — приватный <b>' + esc(repo) + '</b>: ' + esc(DEFAULT_CFG.dir) + '/andrey.json и ' + esc(DEFAULT_CFG.dir) +
+    '/diana.json. Каждый пишет только свой файл, поэтому два телефона не могут перетереть друг друга. ' +
+    'Токен и ключ хранятся только в браузере телефона.</div></div>';
 }
 
 function vHelp() {

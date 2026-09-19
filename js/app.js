@@ -10,8 +10,8 @@ import { vPlan, bind } from './v_plan.js';
 import { vPair } from './v_pair.js';
 import { vWish } from './v_wish.js';
 import { vMore } from './v_more.js';
-import { vHello, vStart } from './sheets.js';
-import A, { setRender } from './actions.js';
+import { vHello, vStart, vSetupLink } from './sheets.js';
+import A, { setRender, getPending } from './actions.js';
 import { start as startSync, onSync, schedulePush, setSummary } from './sync.js';
 import { inbox, feed } from './model.js';
 import { todayKey } from './util.js';
@@ -42,6 +42,8 @@ function typing() {
 }
 function render(force) {
   applyUI();
+  const set = getPending();
+  if (set) { $v().innerHTML = vSetupLink(set, S && S.me); navState(); return; }
   if (!S) { $v().innerHTML = vHello(oldPrototype()); navState(); return; }
   if (!force && typing()) { pending = true; return; }
   pending = false;

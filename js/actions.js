@@ -13,7 +13,8 @@ import * as SH from './sheets.js';
 import { F, E, Q, BUILTIN_TPL, planDate, listCircles } from './v_plan.js';
 import { sheetWkSet } from './v_week.js';
 import { sheetDash } from './v_more.js';
-import { sync, setCfg, getKey, setKey, testConnection, cycle, start as startSync, ready } from './sync.js';
+import { sync, setCfg, getCfg, getKey, setKey, testConnection, cycle, start as startSync, ready,
+         DEFAULT_CFG, makeSetupLink, readSetupLink, clearSetupLink, applySetup } from './sync.js';
 import { newKey, keyLooksValid, cryptoOk } from './crypto.js';
 import { DEFG, DEFS, EMO, PAL } from './parts.js';
 
@@ -22,6 +23,10 @@ export function setRender(fn) { render = fn; }
 
 const A = {};
 export default A;
+
+/* Настройка, пришедшая ссылкой: ждёт одного нажатия «чей это телефон». */
+let pendingSetup = readSetupLink();
+export const getPending = () => pendingSetup;
 
 /* ---------- навигация ---------- */
 A.tab = d => {
@@ -482,8 +487,39 @@ A.reset = () => {
 };
 
 /* ---------- синхронизация ---------- */
-function formCfg() { return { owner: val('gowner'), repo: val('grepo') || 'krugi-data', token: val('gtoken'), dir: 'data' }; }
+function formCfg() {
+  return { owner: val('gowner') || DEFAULT_CFG.owner, repo: val('grepo') || DEFAULT_CFG.repo,
+           token: val('gtoken'), dir: DEFAULT_CFG.dir };
+}
 function gmsg(html) { const m = document.getElementById('gmsg'); if (m) m.innerHTML = html; }
+/* ---------- настройка другого телефона одной ссылкой ---------- */
+A.mklink = d => {
+  const mine = d.v === 'mine';
+  const link = makeSetupLink({ withKey: mine, who: mine ? S.me : other(S.me) });
+  const box = document.getElementById('linkbox');
+  if (!link || !box) { toast('Сначала подключись сам.'); return; }
+  box.innerHTML = '<div class="sub" style="margin-top:.6rem">Ссылка для ' +
+    (mine ? 'второго телефона ' + W.name(S.me) + ' (с ключом личного)' : 'телефона ' + W.gen(other(S.me)) + ' (без ключа)') + ':</div>' +
+    '<div class="code" style="margin-top:.4rem">' + link.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])) + '</div>' +
+    '<div class="srow"><button data-a="linkcopy">Скопировать ссылку</button></div>' +
+    '<div class="sub">Открой её на том телефоне — он подключится в одно нажатие. Способ передать: ' +
+    '«Отправить на свои устройства» в меню Chrome, либо личным сообщением, которое потом удалить. Это как пароль.</div>';
+  window.__krugiLink = link;
+};
+A.linkcopy = async () => {
+  try { await navigator.clipboard.writeText(window.__krugiLink || ''); toast('Ссылка скопирована. Она как пароль — не оставляй её в переписке.'); }
+  catch { toast('Скопируй ссылку вручную из рамки.'); }
+};
+A.setupgo = d => {
+  const p = pendingSetup; if (!p) return;
+  if (!S || S.me !== d.v) loadState(d.v);
+  applySetup(p);
+  pendingSetup = null;
+  S.started = 1;
+  rebuild(); changed('local'); render(); toast('Подключено. Забираю общие данные…');
+};
+A.setupno = () => { pendingSetup = null; clearSetupLink(); render(); };
+
 A.gtest = async () => {
   const c = formCfg(); if (!c.owner || !c.token) { gmsg('<div class="alert"><b>!</b><div>Нужны логин и токен.</div></div>'); return; }
   gmsg('<div class="sub">Проверяю…</div>');

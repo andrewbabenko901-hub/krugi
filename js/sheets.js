@@ -264,6 +264,24 @@ export function sheetTplSave(date) {
     '<div class="srow"><button class="k" data-a="tpladd" data-v="' + esc(date) + '">Сохранить</button><button data-a="close">Отмена</button></div>';
 }
 
+/* ---------- подключение по ссылке ----------
+   Человек открыл ссылку, присланную со второго устройства: спрашиваем
+   только одно — чей это телефон. Всё остальное уже в ссылке. */
+export function vSetupLink(p, me) {
+  const known = p.who || me;
+  return '<div class="hd"><div><div class="dt">ПОДКЛЮЧЕНИЕ</div><h1>Общая база готова</h1></div></div>' +
+    '<div class="card sec"><div class="sub" style="margin-top:0">Ссылка принесла доступ к общей базе ' +
+    esc(p.owner + '/' + p.repo) + (p.key ? ' и ключ личного' : '') + '. Осталось сказать, чей это телефон.</div>' +
+    (known
+      ? '<button class="big-btn" data-a="setupgo" data-v="' + esc(known) + '">Это телефон: ' + esc(known === 'andrey' ? 'Андрей' : 'Диана') + '</button>' +
+        '<button class="big-btn alt" data-a="setupgo" data-v="' + esc(known === 'andrey' ? 'diana' : 'andrey') + '">Нет, это телефон: ' +
+        esc(known === 'andrey' ? 'Диана' : 'Андрей') + '</button>'
+      : '<div class="who"><button data-a="setupgo" data-v="andrey"><span class="av" style="background:#2F5BD0">А</span><b>Андрей</b><small>мой телефон</small></button>' +
+        '<button data-a="setupgo" data-v="diana"><span class="av" style="background:#B0517E">Д</span><b>Диана</b><small>мой телефон</small></button></div>') +
+    '<button class="big-btn alt" data-a="setupno">Не подключать</button>' +
+    '<div class="sub">Ссылка — как пароль: после подключения удали её из переписки. Из адреса телефона она уберётся сама.</div></div>';
+}
+
 /* ---------- первый запуск ---------- */
 export function vHello(old) {
   return '<div class="hd"><div><div class="dt">ПЕРВЫЙ ЗАПУСК</div><h1>Чей это телефон?</h1></div></div>' +
