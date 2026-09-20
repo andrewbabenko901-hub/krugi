@@ -112,7 +112,10 @@ export async function pushTo(target, data, opts = {}) {
       body,
     });
   } catch (e) {
-    return { ok: false, status: 0, msg: 'служба доставки не ответила: ' + (e.message || e) };
+    // Обычно это значит, что браузер не выпустил запрос наружу (CORS) или
+    // телефон не в сети. Пишем понятно: по этой строке потом и разбираемся.
+    return { ok: false, status: 0, net: 1,
+             msg: 'браузер не пустил запрос к службе доставки (' + aud + '): ' + (e.message || e) };
   }
   if (r.ok) return { ok: true, status: r.status, msg: 'отправлено' };
   const txt = await r.text().catch(() => '');

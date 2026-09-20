@@ -251,7 +251,11 @@ function vNote() {
       (yours.length ? '<div class="srow"><button data-a="pushping">Отправить проверку ' + esc(W.dat(W.you)) + '</button></div>' : '') + '</div>'
     : '';
 
-  return header('уведомления', 'На телефон') + back + head +
+  const last = PUSH.pushState.at
+    ? '<div class="sub">Последняя отправка ' + esc(relTime(PUSH.pushState.at)) + ': ' +
+      (PUSH.pushState.ok ? 'ушла.' : '<b>не ушла</b> — ' + esc(PUSH.pushState.msg)) + '</div>'
+    : '';
+  return header('уведомления', 'На телефон') + back + head + last +
     '<div class="card sec"><h3>На этом устройстве</h3>' +
     (here
       ? '<div class="srow"><button data-a="pushtest" class="k">Проверить</button><button data-a="pushoff" class="w">Выключить</button></div>'

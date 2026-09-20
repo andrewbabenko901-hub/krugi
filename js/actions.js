@@ -34,6 +34,7 @@ export const getPending = () => pendingSetup;
 /* ---------- навигация ---------- */
 A.tab = d => {
   closeSheet(); nav.tab = d.v;
+  if (d.v !== 'today') nav.edit = false;               // ушёл с главного — правка кончилась
   if (d.v === 'more') nav.more = 'menu';               // «Ещё» всегда открывает меню
   if (d.v === 'pair') { S.seen.feed = now(); NOTE.markAll(); saveLocal(); }   // открыл «Вместе» — всё увидел
   render(); scrollTo(0, 0); buzz(8);

@@ -111,6 +111,17 @@ export async function disable() {
 }
 
 /* ---------- отправка ---------- */
+/* Чем закончилась последняя отправка — чтобы на экране уведомлений было
+   видно, дошло или нет, а не гадать по молчанию телефона. */
+export const pushState = { at: 0, ok: 0, msg: '' };
+function mark(rs) {
+  const good = rs.find(r => r.ok), bad = rs.find(r => !r.ok);
+  pushState.at = Date.now();
+  pushState.ok = good ? 1 : 0;
+  pushState.msg = good ? 'ушло' : (bad && bad.msg) || 'не ушло';
+  return !!good;
+}
+
 /** Прислать паре уведомление. Тихо ничего не делает, если пара их не включила. */
 export function notifyPartner(title, body, tab) {
   const list = subsOf(P && P.push);
@@ -120,7 +131,7 @@ export function notifyPartner(title, body, tab) {
     .then(rs => {
       const dead = rs.filter(r => r.gone).length;
       if (dead) console.warn('подписки пары устарели:', dead);
-      return rs.some(r => r.ok);
+      return mark(rs);
     });
 }
 /** Проверка: присылаем уведомление самому себе. */
@@ -129,5 +140,6 @@ export async function selfTest() {
   if (!list.length) return { ok: false, msg: 'на этом устройстве уведомления не включены' };
   const r = await pushTo(list[0], { t: '🔔 Круги', b: 'Проверка: уведомления доходят.', tab: 'today', at: Date.now() });
   if (!r.ok && r.gone) { S.push.subs[list[0].id] = { at: now(), off: 1 }; saveLocal(); }
+  mark([r]);
   return r;
 }
