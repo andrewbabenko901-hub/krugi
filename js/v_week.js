@@ -3,6 +3,7 @@ import { esc, fmt, pl, DN, human, parse, addD, wkStart, key, todayDate } from '.
 import { W, nav } from './ctx.js';
 import { S } from './store.js';
 import { pick, tgl } from './ui.js';
+import { weekRing, weekCircles } from './faces.js';
 
 function wkDays() {
   const ws = addD(wkStart(todayDate()), nav.WOFF), a = [];
@@ -97,10 +98,16 @@ export function vWeek() {
     '<div class="sumcell"><b>' + doneD + '</b><span>полных дней</span></div><div class="sumcell"><b>' + dn + '</b><span>дел закрыто</span></div>' +
     '<div class="sumcell"><b>' + (duo != null ? duo : tot - dn) + '</b><span>' + (duo != null ? 'дней закрыли оба' : 'осталось') + '</span></div></div>' : '';
   const lab = nav.WOFF === 0 ? 'эта неделя' : nav.WOFF === -7 ? 'прошлая неделя' : nav.WOFF === 7 ? 'следующая неделя' : human(ws) + ' — ' + human(addD(ws, 6));
+  // Круги недели: то же, что на главном, но целиком и крупнее
+  const wc = weekCircles();
+  const rings = F.rings && wc.length
+    ? '<div class="card sec"><div class="ch"><h3>Круги недели</h3><button class="lnk" data-a="wkt" data-k="rings">скрыть</button></div>' +
+      '<div class="wkrings">' + wc.map(c => weekRing(c, key(ws), 6.2)).join('') + '</div></div>'
+    : '';
   return '<div class="hd"><div><div class="dt">' + esc(lab).toUpperCase() + '</div><h1>Галочки недели</h1></div><div class="rowbtns">' +
     '<button class="ghost" data-a="wshift" data-v="-7" aria-label="Назад">‹</button>' + (nav.WOFF ? '<button class="ghost" data-a="wshift" data-v="0">эта</button>' : '') +
     '<button class="ghost" data-a="wshift" data-v="7" aria-label="Вперёд">›</button><button class="ghost" data-a="wkset">вид</button></div></div>' +
-    '<div class="sec">' + sum + '<div class="wk" style="overflow-x:auto">' + head + body +
+    rings + '<div class="sec">' + sum + '<div class="wk" style="overflow-x:auto">' + head + body +
     '<div class="wkf">Тап по клетке: сделано → сдался → пусто. Точка — в этот день дело не стоит, пунктир — будущее. Показано ' + list.length + ' ' +
     pl(list.length, ['дело', 'дела', 'дел']) + ' из ' + W.tasks.length + '.</div></div></div>';
 }
@@ -121,7 +128,8 @@ export function sheetWkSet() {
     tgl('wkt', 'priv', F.priv, 'Личное', 'Круги и дела с замком') +
     tgl('wkt', 'tot', F.tot, 'Колонка итога', 'Сколько из скольких за неделю') +
     tgl('wkt', 'heat', F.heat, 'Подсветка строк', 'Чем лучше неделя, тем зеленее фон') +
-    tgl('wkt', 'sum', F.sum, 'Сводка сверху', 'Четыре цифры по неделе') + '</div>' +
+    tgl('wkt', 'sum', F.sum, 'Сводка сверху', 'Четыре цифры по неделе') +
+    tgl('wkt', 'rings', F.rings, 'Круги недели', 'Большие круги с дольками по дням') + '</div>' +
     '<div class="fld"><label>Плотность строк</label>' + pick('dens', S.ui.dens, [['compact', 'плотно'], ['normal', 'обычно'], ['roomy', 'просторно']]) + '</div>' +
     '<div class="srow"><button data-a="close" class="k">Готово</button></div>';
 }

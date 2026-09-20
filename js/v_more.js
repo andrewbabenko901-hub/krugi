@@ -171,7 +171,10 @@ function vSet() {
     '<div class="card sec"><h3>Главный экран</h3><div class="sub">Что показывать и в каком порядке. У каждого свой.</div>' +
     '<div class="srow"><button class="k" data-a="dashset">Настроить виджеты</button><button data-a="wkset">Вид недели</button></div></div>' +
 
-    '<div class="card sec"><h3>Оформление</h3><div class="fld"><label>Тема</label>' + pick('theme', S.ui.theme, [['auto', 'как в системе'], ['light', 'светлая'], ['dark', 'тёмная']]) + '</div>' +
+    '<div class="card sec"><h3>Оформление</h3>' +
+    '<div class="sub" style="margin-top:0">Форма кругов, размер, палитра и движение — всё в одной панели с живым образцом.</div>' +
+    '<div class="srow"><button class="k" data-a="look">Открыть вид кругов</button></div>' +
+    '<div class="fld"><label>Тема</label>' + pick('theme', S.ui.theme, [['auto', 'как в системе'], ['light', 'светлая'], ['dark', 'тёмная']]) + '</div>' +
     '<div class="fld"><label>Размер текста</label><div class="sizes">' + [[0.88, 's1'], [1, 's2'], [1.14, 's3'], [1.3, 's4']].map(([v, c]) =>
       '<button class="' + c + '" data-a="scale" data-v="' + v + '" aria-pressed="' + (S.ui.scale === v) + '">Аа</button>').join('') + '</div></div>' +
     '<div class="fld"><label>Плотность</label>' + pick('dens', S.ui.dens, [['compact', 'плотно'], ['normal', 'обычно'], ['roomy', 'просторно']]) + '</div></div>' +

@@ -27,7 +27,7 @@ export const LISTS = ['circles', 'groups', 'tasks', 'wishes', 'boards', 'events'
 export const MAPS = ['log', 'counts', 'answers', 'rsvp', 'thanks', 'sealed', 'claims'];
 
 /* Виджеты главного экрана: порядок и что включено по умолчанию. */
-export const WIDGETS_DEFAULT = ['strip', 'hero', 'status', 'inbox', 'circles', 'quick', 'pledges',
+export const WIDGETS_DEFAULT = ['strip', 'hero', 'status', 'inbox', 'circles', 'wring', 'quick', 'pledges',
   'goal', 'partner', 'events', 'dates', 'shop', 'feed', 'badge', 'week', 'wish'];
 const WIDGETS_OFF = ['week', 'wish'];
 
@@ -49,8 +49,15 @@ export function defaultUI() {
   return {
     dash: WIDGETS_DEFAULT.map(id => ({ id, on: !WIDGETS_OFF.includes(id) })),
     cols: 0, scale: 1, dens: 'normal', theme: 'auto', corder: [], closed: [], recentEmo: [],
+    face: 'ring',      // вид кругов: ring | dots | fill | arc | tile | bar
+    wrn: 6,            // сколько недельных кругов показывать на главном
+    csize: 1,          // размер круга: 0 мелкий, 1 средний, 2 крупный
+    cw: 1,             // толщина кольца: 0..3
+    cap: 1,            // подпись под кругом: 0 только название, 1 с делом, 2 без подписи
+    fx: 1,             // движение и свет: 1 включено
+    skin: 'paper',     // палитра оформления
     wk: { group: 'circle', heat: 1, tot: 1, weekend: 1, count: 1, once: 1, done: 1, partner: 1, priv: 1,
-          sort: 'circle', fc: 'all', fw: 'all', sum: 1 },
+          sort: 'circle', fc: 'all', fw: 'all', sum: 1, rings: 1 },
     shopF: { who: 'all', left: 0, store: 'all' },
     stat: { per: 'week', fc: 'all', duo: 1 },
     wish: { board: 'all', who: 'all', st: 'open', sort: 'new' },
@@ -97,12 +104,17 @@ export function loadState(me) {
 function fixup(s) {
   const d = emptyData();
   for (const k in d) if (!s.data[k]) s.data[k] = d[k];
-  const u = defaultUI();
+  // Вложенные наборы настроек собираем ДО общего слияния: иначе `u.wk` уже
+  // заменён сохранённым объектом, и новые переключатели никогда не появятся
+  // у того, у кого приложение стоит давно.
+  const u = defaultUI(), nested = {};
+  for (const k of ['wk', 'shopF', 'stat', 'wish']) nested[k] = Object.assign({}, u[k], (s.ui && s.ui[k]) || {});
   s.ui = Object.assign(u, s.ui || {});
-  for (const k of ['wk', 'shopF', 'stat', 'wish']) s.ui[k] = Object.assign(u[k], s.ui[k] || {});
+  for (const k in nested) s.ui[k] = nested[k];
   // новые виджеты дописываются в конец выключенными — порядок человека не трогаем
   const have = new Set(s.ui.dash.map(x => x.id));
-  for (const id of WIDGETS_DEFAULT) if (!have.has(id)) s.ui.dash.push({ id, on: false });
+  // новое, что стоит показать, приходит включённым — порядок человека не трогаем
+  for (const id of WIDGETS_DEFAULT) if (!have.has(id)) s.ui.dash.push({ id, on: !WIDGETS_OFF.includes(id) });
   s.ui.dash = s.ui.dash.filter(x => WIDGETS_DEFAULT.includes(x.id));
   const pp = s.people || {};
   s.people = {};

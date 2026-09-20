@@ -18,6 +18,7 @@ import { sync, setCfg, getCfg, getKey, setKey, testConnection, cycle, start as s
          DEFAULT_CFG, makeSetupLink, readSetupLink, parseSetupText, clearSetupLink, applySetup, resetSecret } from './sync.js';
 import { newKey, keyLooksValid, cryptoOk } from './crypto.js';
 import { DEFG, DEFS, EMO, PAL } from './parts.js';
+import { forgetMoves } from './faces.js';
 import * as PUSH from './push.js';
 import * as NOTE from './note.js';
 
@@ -54,7 +55,10 @@ function afterMark(t, k, wasFull) {
   if (t.req && W.isDone(t, k) && S.data.answers[t.req] && !S.data.answers[t.req].done)
     setMap('answers', t.req, { ...S.data.answers[t.req], done: 1 });
   const c = W.circleById[t.c];
-  if (c && W.isDone(t, k) && W.prog(c, k).p >= 1) buzz([10, 40, 10]);
+  if (c && W.isDone(t, k) && W.prog(c, k).p >= 1) {
+    buzz([10, 40, 10]);
+    if (S.ui.fx && k === W.today) confetti([c.col, c.col, W.col(W.me)]);   // круг закрыт — маленький салют
+  }
   if (!wasFull && W.full(W.me, k) && k === W.today) {
     setTimeout(() => { confetti([W.col(W.me), '#1D8F5B', '#C98A12']); toast('День закрыт целиком. Серия: ' + W.sum().streak + '.'); buzz([12, 60, 20]); }, 250);
   }
@@ -273,6 +277,24 @@ A.dens = d => { S.ui.dens = d.v; changed('ui'); };
 
 /* ---------- главный экран ---------- */
 A.dashset = () => { closeSheet(); openSheet(sheetDash, [], true); };
+/* ---------- вид кругов ---------- */
+A.look = () => { closeSheet(); openSheet(SH.sheetLook, [], true); };
+const setUI = (k, v) => { S.ui[k] = v; forgetMoves(); changed('ui'); refreshSheet(true); buzz(6); };
+A.uface = d => setUI('face', d.v);
+A.usize = d => setUI('csize', +d.v);
+A.uw = d => setUI('cw', +d.v);
+A.ucap = d => setUI('cap', +d.v);
+A.uskin = d => { setUI('skin', d.v); toast('Палитра: ' + ((SH.SKINS.find(s => s[0] === d.v) || [])[1] || d.v) + '.'); };
+A.ufx = () => { setUI('fx', S.ui.fx ? 0 : 1); if (S.ui.fx) confetti([W.col(W.me)]); };
+A.udens = () => setUI('dens', S.ui.dens === 'roomy' ? 'normal' : 'roomy');
+A.cface = d => { readCF(); SH.CF.face = d.v; refreshSheet(true); };
+A.wrn = d => { S.ui.wrn = +d.v; changed('ui'); };
+A.lookreset = () => {
+  const u = defaultUI();
+  Object.assign(S.ui, { face: u.face, csize: u.csize, cw: u.cw, cap: u.cap, fx: u.fx, skin: u.skin, cols: u.cols, dens: u.dens });
+  forgetMoves(); changed('ui'); refreshSheet(true);
+  toast('Вид — как по умолчанию.');
+};
 A.dedit = () => {
   nav.edit = !nav.edit;
   if (!nav.edit) toast('Главный экран сохранён.');

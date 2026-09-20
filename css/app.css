@@ -486,3 +486,117 @@ body.hasnote .wrap{padding-top:calc(3.4rem + var(--sat))}
   input[type=search],input[type=email],select,textarea{font-size:max(16px,.93rem)}
   .days .db2,.pick .pb,.ghost{min-height:2.1rem}          /* пальцем, а не ногтем */
 }
+
+/* ============================================================
+   ВИДЫ КРУГОВ
+   ============================================================ */
+.cell .cen .cnt{font-variant-numeric:tabular-nums}
+
+/* плитка: крупная цифра без кольца */
+.cell.f-tile{padding:.45rem .4rem .5rem}
+.cell.f-tile .tl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;
+  border:1px solid;border-radius:.8rem;padding:.5rem .3rem;position:relative;overflow:hidden}
+.cell.f-tile .tv{font-size:1.5rem;line-height:1.1}
+.cell.f-tile .tv .cnt{font-size:1.25rem;font-weight:600}
+.cell.f-tile .tb{position:absolute;left:0;right:0;bottom:0;height:.28rem;background:var(--track)}
+.cell.f-tile .tb i{display:block;height:100%;transition:width .5s cubic-bezier(.25,1,.35,1)}
+
+/* строки: плотный список вместо сетки */
+.grid.bars{gap:.4rem}
+.cell.f-bar{display:flex;align-items:center;gap:.6rem;text-align:left;padding:.55rem .7rem}
+.cell.f-bar .bi{width:2rem;height:2rem;border-radius:.6rem;display:grid;place-items:center;font-size:1.05rem;flex:0 0 2rem}
+.cell.f-bar .bn{flex:1;min-width:0;display:flex;flex-direction:column}
+.cell.f-bar .bn b{font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.f-bar .bn small{font-size:.66rem;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.f-bar .bp{flex:0 0 3.4rem;height:.4rem;border-radius:99rem;background:var(--track);overflow:hidden}
+.cell.f-bar .bp i{display:block;height:100%;border-radius:99rem;transition:width .5s cubic-bezier(.25,1,.35,1)}
+.cell.f-bar .bv{font-size:.72rem;color:var(--mut);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.cell.f-bar .bd{color:var(--ok);font-size:.9rem}
+.cell.f-bar .badge2{display:none}
+
+/* ============================================================
+   ДВИЖЕНИЕ И СВЕТ (можно выключить в «виде кругов»)
+   ============================================================ */
+@media (prefers-reduced-motion:no-preference){
+  html[data-fx="1"] .cell.grow svg.f-ring .prog{animation:ringgrow .75s cubic-bezier(.25,1,.35,1)}
+  html[data-fx="1"] .cell.grow svg .prog{animation:fadeprog .5s ease-out}
+  html[data-fx="1"] .cell.grow .cen,html[data-fx="1"] .cell.grow .tv{animation:pop .45s cubic-bezier(.3,1.5,.5,1)}
+  html[data-fx="1"] svg.f-fill .wave{animation:wavego 3.6s linear infinite}
+  html[data-fx="1"] .cell.done svg .prog{filter:drop-shadow(0 0 .12rem currentColor)}
+  html[data-fx="1"] .cell.done{animation:doneglow 2.6s ease-in-out infinite}
+  html[data-fx="1"] .wkring svg{animation:fadeprog .5s ease-out}
+}
+@keyframes ringgrow{from{stroke-dashoffset:var(--cc)}}
+@keyframes fadeprog{from{opacity:.25}}
+@keyframes pop{0%{transform:scale(.8)}60%{transform:scale(1.09)}100%{transform:scale(1)}}
+@keyframes wavego{from{transform:translateX(0)}to{transform:translateX(30px)}}
+@keyframes doneglow{0%,100%{box-shadow:var(--sh)}50%{box-shadow:0 0 0 1px var(--ink),var(--sh)}}
+
+/* ============================================================
+   НЕДЕЛЬНЫЕ КРУГИ
+   ============================================================ */
+.wkrings{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.2rem,1fr));gap:.7rem;margin-top:.7rem}
+.wkring{background:var(--pap);border:1px solid var(--line);border-radius:1rem;padding:.6rem .4rem .5rem;text-align:center;box-shadow:var(--sh)}
+.wkring svg{display:block;margin:0 auto}
+.wkring .wc{font-family:"Oswald",sans-serif;fill:var(--ink)}
+.wkring .wc .big{font-size:30px;font-weight:500}
+.wkring .wc .small{font-size:17px;fill:var(--mut)}
+.wkring .ws{font-size:11px;fill:var(--mut);font-family:"Golos Text",sans-serif}
+.wkring .wn{font-size:.76rem;font-weight:500;margin-top:.3rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wkring .wd{display:flex;gap:.12rem;justify-content:center;margin-top:.35rem}
+.wkring .wd span{font-size:.55rem;color:var(--mut);width:1.05rem;padding:.08rem 0;border-radius:.25rem;background:var(--line2)}
+.wkring .wd .on{background:var(--col);color:var(--inv);opacity:.92}
+.wkring .wd .half{background:var(--col);color:var(--inv);opacity:.45}
+.wkring .wd .off{opacity:.35}
+.wkring .wd .td{outline:1px solid var(--ink)}
+.wkrow{display:flex;gap:.6rem;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:.3rem;scrollbar-width:none;margin-top:.7rem}
+.wkrow::-webkit-scrollbar{display:none}
+.wkrow .wkring{flex:0 0 8.4rem}
+
+/* ============================================================
+   ПАЛИТРЫ ОФОРМЛЕНИЯ
+   Скин меняет только токены — вся остальная разметка не знает о нём.
+   ============================================================ */
+:root[data-skin=mint]{--bg:#EDF4F0;--pap:#FFF;--acc:#0C8F76;--line:#DBE7E1;--line2:#E9F0EC;--track:#DCE8E2;--nav:rgba(237,244,240,.94);--accbg:#F1F8F5}
+:root[data-skin=mint][data-theme=dark]{--bg:#0E1512;--pap:#16201C;--acc:#3ED3AC;--line:#213029;--line2:#1B2622;--track:#213029;--nav:rgba(14,21,18,.94);--accbg:#13231D}
+:root[data-skin=sunset]{--bg:#FBF1E8;--pap:#FFF;--acc:#C85A2B;--gold:#C98A12;--line:#EDDFD2;--line2:#F5EBE1;--track:#EDDFD2;--nav:rgba(251,241,232,.94);--accbg:#FDF4EE}
+:root[data-skin=sunset][data-theme=dark]{--bg:#171210;--pap:#211A16;--acc:#F08A5B;--line:#332720;--line2:#291F1A;--track:#332720;--nav:rgba(23,18,16,.94);--accbg:#2A1D16}
+:root[data-skin=ink]{--bg:#EFEFF1;--pap:#FFF;--acc:#3D5A80;--ink:#101114;--line:#DEDEE3;--line2:#EAEAEE;--track:#DEDEE3;--nav:rgba(239,239,241,.94);--accbg:#F2F5F9}
+:root[data-skin=ink][data-theme=dark]{--bg:#0D0E11;--pap:#16181D;--acc:#7EA4D4;--line:#23262D;--line2:#1C1F25;--track:#23262D;--nav:rgba(13,14,17,.94);--accbg:#161C26}
+:root[data-skin=berry]{--bg:#F7EFF4;--pap:#FFF;--acc:#A43C77;--line:#EADDE5;--line2:#F2E9EE;--track:#EADDE5;--nav:rgba(247,239,244,.94);--accbg:#FBF2F7}
+:root[data-skin=berry][data-theme=dark]{--bg:#150F13;--pap:#1F171C;--acc:#E489BD;--line:#2E2129;--line2:#241A20;--track:#2E2129;--nav:rgba(21,15,19,.94);--accbg:#26161F}
+/* неон всегда тёмный: в светлом виде он теряет весь смысл */
+:root[data-skin=neon],:root[data-skin=neon][data-theme=dark],:root[data-skin=neon][data-theme=light]{
+ --bg:#07080C;--pap:#101320;--ink:#E8ECFF;--inv:#07080C;--mut:#8189B5;--line:#1E2336;--line2:#161A28;
+ --track:#1E2336;--acc:#6BE7FF;--ok:#3DF5A8;--warn:#FF6B8B;--gold:#FFD166;--nav:rgba(7,8,12,.92);
+ --okbg:#0A1A16;--accbg:#0B1A24;--warnbg:#1C0E14;--goldbg:#1D1708;--sh:0 1px 3px rgba(0,0,0,.6);
+ color-scheme:dark}
+:root[data-skin=neon] .cell{box-shadow:0 0 0 1px rgba(107,231,255,.08),var(--sh)}
+:root[data-skin=neon] .cell.done{border-color:var(--acc);box-shadow:0 0 .7rem rgba(107,231,255,.22)}
+
+/* панель вида: образец и палитры */
+.pvbox{padding:.8rem .6rem}
+.pvrow{display:flex;gap:.9rem;align-items:flex-end;justify-content:center;flex-wrap:wrap}
+.pv{display:flex;flex-direction:column;align-items:center;gap:.25rem;position:relative}
+.pv.wide{width:100%}
+.pv small{font-size:.64rem;color:var(--mut)}
+.pv .pvm{position:absolute;top:0;left:0;right:0;height:3.4rem;display:grid;place-items:center;font-size:.78rem;font-weight:600;
+  font-variant-numeric:tabular-nums;pointer-events:none}
+.pv .pvtile{display:grid;place-items:center;border:1px solid;border-radius:.7rem;position:relative;overflow:hidden;font-size:.85rem;font-weight:600}
+.pv .pvtile i{position:absolute;left:0;bottom:0;height:.25rem}
+.pv .pvbar{display:block;width:100%;height:.55rem;border-radius:99rem;background:var(--track);overflow:hidden}
+.pv .pvbar i{display:block;height:100%;border-radius:99rem}
+.skins{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.6rem}
+.skin{border:1px solid var(--line);border-radius:.7rem;padding:.5rem;background:var(--pap);display:flex;flex-direction:column;gap:.15rem}
+.skin[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.skin b{font-size:.8rem}
+.skin small{font-size:.64rem;color:var(--mut);line-height:1.3}
+.skin .sw{display:flex;gap:.15rem;margin-bottom:.15rem}
+.skin .sw i{width:.9rem;height:.9rem;border-radius:99rem;display:block}
+.s-paper .a{background:#F3F3F0}.s-paper .b{background:#2F5BD0}.s-paper .c{background:#15161A}
+.s-mint .a{background:#EDF4F0}.s-mint .b{background:#0C8F76}.s-mint .c{background:#16201C}
+.s-sunset .a{background:#FBF1E8}.s-sunset .b{background:#C85A2B}.s-sunset .c{background:#211A16}
+.s-ink .a{background:#EFEFF1}.s-ink .b{background:#3D5A80}.s-ink .c{background:#16181D}
+.s-berry .a{background:#F7EFF4}.s-berry .b{background:#A43C77}.s-berry .c{background:#1F171C}
+.s-neon .a{background:#07080C}.s-neon .b{background:#6BE7FF}.s-neon .c{background:#3DF5A8}
+.grid.bars .addc{min-height:0;padding:.7rem;font-size:.78rem}

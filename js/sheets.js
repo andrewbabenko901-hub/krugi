@@ -2,10 +2,11 @@
 import { esc, fmt, DN, human, parse, addK, wkStartK, money, domainOf, inDays, shortK } from './util.js';
 import { W, nav } from './ctx.js';
 import { S } from './store.js';
-import { ring, pick, chk } from './ui.js';
+import { ring, pick, chk, tgl } from './ui.js';
 import { taskLi, circleSub, circleLabel, MOODS, UNITS, EMO, PAL, EVENT_KINDS, VIS, whoTag } from './parts.js';
 import { PLEDGE_TYPES } from './model.js';
 import { EMOJI, EMOJI_KEYS } from './emoji.js';
+import { FACES, FACE_NAMES, facePreview, faceOf } from './faces.js';
 
 /* ---------- круг ---------- */
 export const CS = { gw: null, prv: 0 };       // черновик: кто делает и личное ли новое дело
@@ -108,6 +109,54 @@ export function sheetTask(t) {
     '<div class="sub">Регулярное дело при удалении уходит только из будущих дней — история остаётся как была.</div>';
 }
 
+/* ---------- вид кругов ----------
+   Всё, что человек видит каждый день: форма круга, размер, подпись,
+   движение и палитра. Сверху живой образец — меняешь и сразу видно. */
+export const SKINS = [
+  ['paper', 'Бумага', 'светлый спокойный, как сейчас'],
+  ['mint', 'Мята', 'прохладный зелёный'],
+  ['sunset', 'Закат', 'тёплый песочный с кирпичным'],
+  ['ink', 'Графит', 'строгий серо-синий'],
+  ['berry', 'Ягода', 'мягкий розово-лиловый'],
+  ['neon', 'Неон', 'тёмный с электрическим светом'],
+];
+export function sheetLook() {
+  const face = S.ui.face || 'ring', col = W.col(W.me);
+  const sample = '<div class="pvrow">' +
+    facePreview(face, 0.34, col, 3.4, 'начато') +
+    facePreview(face, 0.72, col, 3.4, 'почти') +
+    facePreview(face, 1, col, 3.4, 'закрыто') + '</div>';
+  return '<div class="sn">Вид кругов</div>' +
+    '<div class="sub" style="margin-top:0">Меняй — образец сверху перерисовывается сразу.</div>' +
+    '<div class="card sec pvbox">' + sample + '</div>' +
+
+    '<div class="fld"><label>Форма</label><div class="pick">' + FACES.map(([id, ic, nm]) =>
+      '<button class="pb" data-a="uface" data-v="' + id + '" aria-pressed="' + (face === id) + '">' + ic + ' ' + esc(nm) + '</button>').join('') +
+    '</div><div class="sub">' + esc((FACES.find(f => f[0] === face) || [])[3] || '') + '</div></div>' +
+
+    '<div class="fld"><label>Размер</label>' + pick('usize', S.ui.csize, [[0, 'мелкие'], [1, 'средние'], [2, 'крупные']]) + '</div>' +
+    (face === 'bar' || face === 'tile' ? '' :
+      '<div class="fld"><label>Толщина</label>' + pick('uw', S.ui.cw, [[0, 'волосок'], [1, 'обычная'], [2, 'жирная'], [3, 'очень'] ]) + '</div>') +
+    '<div class="fld"><label>Подпись под кругом</label>' + pick('ucap', S.ui.cap, [[0, 'только название'], [1, 'название и дело'], [2, 'без подписи']]) + '</div>' +
+    '<div class="fld"><label>Кругов в ряд</label>' + pick('dcol', S.ui.cols, [[0, 'по размеру'], [2, '2'], [3, '3'], [4, '4'], [5, '5']]) + '</div>' +
+
+    '<div class="card sec"><h3>Палитра</h3><div class="skins">' + SKINS.map(([id, nm, d]) =>
+      '<button class="skin s-' + id + '" data-a="uskin" data-v="' + id + '" aria-pressed="' + ((S.ui.skin || 'paper') === id) + '">' +
+      '<span class="sw"><i class="a"></i><i class="b"></i><i class="c"></i></span><b>' + esc(nm) + '</b><small>' + esc(d) + '</small></button>').join('') +
+    '</div>' +
+    '<div class="fld"><label>Тема</label>' + pick('theme', S.ui.theme, [['auto', 'как в системе'], ['light', 'светлая'], ['dark', 'тёмная']]) + '</div>' +
+    '<div class="sub">Палитра ложится поверх светлой и тёмной темы. «Неон» всегда тёмный.</div></div>' +
+
+    '<div class="card sec">' +
+    tgl('ufx', '', S.ui.fx, 'Движение и свет', 'Кольца дорисовываются на глазах, закрытый круг подсвечивается, вода в «стакане» колышется') +
+    tgl('udens', '', S.ui.dens === 'roomy' ? 1 : 0, 'Просторнее', 'Больше воздуха между карточками') + '</div>' +
+
+    '<div class="card sec"><h3>Главный экран</h3><div class="sub">Виджеты можно таскать пальцем прямо на экране.</div>' +
+    '<div class="srow"><button class="k" data-a="dedit">Переставить виджеты</button><button data-a="dashset">Список виджетов</button></div></div>' +
+
+    '<div class="srow"><button data-a="lookreset">Вернуть обычный вид</button><button class="k" data-a="close">Готово</button></div>';
+}
+
 /* ---------- выбор эмодзи ----------
    Полный набор по разделам плюс поиск по русским словам и недавние. */
 export const emoSt = { tab: 0, q: '', on: null };   // on: что настраиваем — 'circle' | 'group'
@@ -201,6 +250,11 @@ export function sheetCircleSetup() {
         ? 'Недельная цель не мешает закрывать день: «три прогулки в неделю» не станет ежедневным долгом.'
         : 'Дневная цель входит в состав дня: пока не набрано — день не закрыт.') + '</div></div>' +
       '<div class="sub">Быстрые кнопки в круге будут «−' + esc(c.stp || 1) + '» и «+' + esc(c.stp || 1) + '», а рядом поле для точного числа.</div></div>' : '') +
+
+    '<div class="fld"><label>Вид этого круга</label>' +
+    pick('cface', c.face || '', [['', 'как у всех (' + esc(FACE_NAMES[S.ui.face || 'ring'] || '') + ')']].concat(
+      FACES.filter(f => f[0] !== 'bar').map(f => [f[0], f[1] + ' ' + f[2]]))) +
+    '<div class="sub">Можно выделить важный круг отдельной формой.</div></div>' +
 
     '<div class="fld"><label>Папка</label>' +
     pick('cgrp', c.grp || '', [['', 'без папки']].concat(W.groups.map(g => [g.id, g.i + ' ' + g.n]))) +

@@ -30,6 +30,8 @@ function applyUI() {
   r.style.setProperty('--z', S.ui.scale);
   r.style.setProperty('--pad', S.ui.dens === 'compact' ? .72 : S.ui.dens === 'roomy' ? 1.25 : 1);
   r.dataset.theme = S.ui.theme === 'auto' ? (darkMq.matches ? 'dark' : 'light') : S.ui.theme;
+  r.dataset.skin = S.ui.skin || 'paper';
+  r.dataset.fx = S.ui.fx ? '1' : '0';
   const m = document.querySelector('meta[name=theme-color]');
   if (m) m.content = r.dataset.theme === 'dark' ? '#111215' : '#F3F3F0';
 }

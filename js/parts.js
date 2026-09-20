@@ -1,7 +1,9 @@
 /* Куски разметки, которые нужны на нескольких экранах. */
 import { esc, fmt, DN, money, domainOf, safeUrl, shortK, inDays } from './util.js';
 import { ring, chk, X_ICON } from './ui.js';
+import { faceSvg, faceOf, movedSince } from './faces.js';
 import { W } from './ctx.js';
+import { S } from './store.js';
 
 export const MOODS = [['😣', 'тяжело'], ['😕', 'так себе'], ['😐', 'ровно'], ['🙂', 'хорошо'], ['😄', 'отлично']];
 export const UNITS = ['мл', 'мин', 'стр', 'шагов', 'раз', 'задач', 'ккал', 'км', 'ч'];
@@ -54,20 +56,58 @@ export function nextOf(c, k) {
 }
 
 /** Клетка круга на главном. */
-export function cellHTML(c, k, size = 4.6) {
+/** Размер круга в ряду: мелкий, средний, крупный. */
+export const CSIZE = [3.5, 4.6, 5.9];
+export const cellSize = () => CSIZE[S.ui.csize] || CSIZE[1];
+
+/** Что написано в середине круга. */
+function centerOf(c, k, x, done) {
+  if (c.k === 'mood') { const v = W.cval(c, k); return '<span class="em">' + (v ? MOODS[v - 1][0] : esc(c.i)) + '</span>'; }
+  if (done) return '<span class="em">✓</span>';
+  if (c.k !== 'count' && x.a) return '<span class="cnt">' + x.d + '/' + x.a + '</span>';
+  if (c.k === 'count' && x.v) return '<span class="cnt">' + Math.round(x.p * 100) + '%</span>';
+  return '<span class="em">' + esc(c.i) + '</span>';
+}
+const cBadges = c => (c.vis === 'prv' ? '<span class="badge2">🔒</span>'
+    : c._shared ? '<span class="badge2">' + (c._mine ? 'общий' : esc(W.name(c.own))) + '</span>' : '') +
+  (c.off ? '<span class="badge2 l">пауза</span>' : c.per === 'week' ? '<span class="badge2 l">нед</span>' : '');
+
+/** Подпись под кругом: только название, название с ближайшим делом, или ничего. */
+function capOf(c, k) {
+  const cap = S.ui.cap;
+  if (cap === 2) return '';
+  const nm = '<div class="nm">' + esc(c.i) + ' ' + esc(c.n) + '</div>';
+  return cap === 0 ? nm : nm + '<div class="nx">' + esc(nextOf(c, k)) + '</div>';
+}
+
+export function cellHTML(c, k, size) {
   const x = W.prog(c, k), fut = k > W.today, done = !x.empty && x.p >= 1;
-  let center;
-  if (c.k === 'mood') { const v = W.cval(c, k); center = '<span class="em">' + (v ? MOODS[v - 1][0] : esc(c.i)) + '</span>'; }
-  else if (done) center = '<span class="em">✓</span>';
-  else if (c.k !== 'count' && x.a) center = '<span class="cnt">' + x.d + '/' + x.a + '</span>';
-  else if (c.k === 'count' && x.v) center = '<span class="cnt">' + Math.round(x.p * 100) + '%</span>';
-  else center = '<span class="em">' + esc(c.i) + '</span>';
-  const badge = c.vis === 'prv' ? '<span class="badge2">🔒</span>'
-    : c._shared ? '<span class="badge2">' + (c._mine ? 'общий' : esc(W.name(c.own))) + '</span>' : '';
-  const off = c.off ? '<span class="badge2 l">пауза</span>' : c.per === 'week' ? '<span class="badge2 l">нед</span>' : '';
-  return '<button class="cell' + (done ? ' done' : '') + (fut ? ' locked' : '') + '" data-a="circle" data-id="' + esc(c.id) + '">' +
-    badge + off + ring(x.empty ? 0 : x.p, c.col, size) + '<div class="cen">' + center + '</div>' +
-    '<div class="nm">' + esc(c.i) + ' ' + esc(c.n) + '</div><div class="nx">' + esc(nextOf(c, k)) + '</div></button>';
+  const face = faceOf(c), p = x.empty ? 0 : x.p;
+  // кольцо оживает только там, где доля изменилась с прошлой отрисовки
+  const moved = S.ui.fx && movedSince(c.id + '|' + k, p) ? ' grow' : '';
+  const cls = 'cell f-' + face + (done ? ' done' : '') + (fut ? ' locked' : '') + moved;
+  const open = '<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' + cBadges(c);
+
+  if (face === 'bar') {
+    const val = c.k === 'count' ? Math.round(p * 100) + '%'
+      : c.k === 'mood' ? (x.v ? MOODS[x.v - 1][0] : '—')
+      : x.a ? x.d + ' / ' + x.a : '—';
+    return '<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' +
+      '<span class="bi" style="background:' + esc(c.col) + '22">' + esc(c.i) + '</span>' +
+      '<span class="bn"><b>' + esc(c.n) + '</b><small>' + esc(nextOf(c, k)) + '</small></span>' +
+      '<span class="bp"><i style="width:' + Math.round(p * 100) + '%;background:' + esc(c.col) + '"></i></span>' +
+      '<span class="bv">' + esc(val) + '</span>' + (done ? '<span class="bd">✓</span>' : '') + '</button>';
+  }
+  if (face === 'tile') {
+    const sz = size || cellSize();
+    return open + '<span class="tl" style="min-height:' + sz + 'rem;background:' + esc(c.col) +
+      (done ? '2E' : '14') + ';border-color:' + esc(c.col) + (done ? '' : '33') + '">' +
+      '<span class="tv">' + centerOf(c, k, x, done) + '</span>' +
+      '<span class="tb"><i style="width:' + Math.round(p * 100) + '%;background:' + esc(c.col) + '"></i></span></span>' +
+      capOf(c, k) + '</button>';
+  }
+  return open + faceSvg(c, x, size || cellSize()) +
+    '<div class="cen">' + centerOf(c, k, x, done) + '</div>' + capOf(c, k) + '</button>';
 }
 
 /** Строка дела в списке. */

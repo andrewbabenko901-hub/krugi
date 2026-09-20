@@ -11,7 +11,8 @@ import { W, nav } from './ctx.js';
 import { S } from './store.js';
 import { sync } from './sync.js';
 import { BADGES, pledgeProg, pledgeText, goalNow, inbox, feed, upcomingDates } from './model.js';
-import { cellHTML, segs, whoTag, eventRow, syncPill, MOODS } from './parts.js';
+import { cellHTML, cellSize, segs, whoTag, eventRow, syncPill, MOODS } from './parts.js';
+import { faceOf, weekRing, weekCircles } from './faces.js';
 
 export const WIDGETS = {
   strip:   { t: 'Лента дней', d: 'Дни недели с полосками закрытого' },
@@ -19,6 +20,7 @@ export const WIDGETS = {
   status:  { t: 'Статус дня', d: 'Сколько закрыто и что горит' },
   inbox:   { t: 'Входящие от пары', d: 'Просьбы, приглашения, предложения' },
   circles: { t: 'Сетка кругов', d: 'Все твои и общие круги' },
+  wring:   { t: 'Круги недели', d: 'Большой круг на каждый круг: какие дни закрыты' },
   quick:   { t: 'Быстрые отметки', d: 'Ближайшие открытые дела' },
   pledges: { t: 'Обещания', d: 'Награды за выполненное', side: 1 },
   goal:    { t: 'Цель пары', d: 'Общая цель недели', side: 1 },
@@ -33,6 +35,19 @@ export const WIDGETS = {
 };
 
 const R = {};
+
+R.wring = () => {
+  const ws = wkStartK(nav.VD), list = weekCircles();
+  if (!list.length) return '';
+  const n = S.ui.wrn || 6, show = list.slice(0, n);
+  return '<div class="card sec"><div class="ch"><h3>Круги недели</h3>' +
+    '<button class="lnk" data-a="tab" data-v="week">вся неделя ›</button></div>' +
+    '<div class="sub">Неделя с ' + esc(shortK(ws)) + '. Каждая долька — день: видно не только сколько, но и когда просело.</div>' +
+    '<div class="wkrings">' + show.map(c => weekRing(c, ws, 5.8)).join('') + '</div>' +
+    (list.length > show.length
+      ? '<div class="srow"><button data-a="wrn" data-v="99">Показать все ' + list.length + '</button></div>'
+      : n > 6 ? '<div class="srow"><button data-a="wrn" data-v="6">Показать меньше</button></div>' : '') + '</div>';
+};
 
 R.strip = () => {
   const ws = wkStart(parse(nav.VD)); let o = '';
@@ -93,8 +108,11 @@ R.circles = () => {
   const k = nav.VD, list = W.myCircles.filter(c => W.active(c, k) || c.off);
   if (!W.myCircles.length) return '<div class="card sec"><h3>Кругов пока нет</h3><div class="sub">Круг — это папка дел, счётчик (шаги, вода, задачи по работе), список покупок или настроение. Создай первый.</div>' +
     '<button class="big-btn" data-a="cnew">Создать круг</button><button class="big-btn alt" data-a="quick">Или набор для старта</button></div>';
-  const cols = S.ui.cols ? 'repeat(' + S.ui.cols + ',1fr)' : 'repeat(auto-fill,minmax(6.4rem,1fr))';
-  const grid = arr => '<div class="grid" style="grid-template-columns:' + cols + '">' + arr.map(c => cellHTML(c, k)).join('') + '</div>';
+  const bars = faceOf(null) === 'bar';
+  const cols = bars ? '1fr' : S.ui.cols ? 'repeat(' + S.ui.cols + ',1fr)'
+    : 'repeat(auto-fill,minmax(' + (cellSize() + 1.9) + 'rem,1fr))';
+  const grid = arr => '<div class="grid' + (bars ? ' bars' : '') + '" style="grid-template-columns:' + cols + '">' +
+    arr.map(c => cellHTML(c, k)).join('') + '</div>';
   const closed = S.ui.closed || [];
   const used = new Set();
   let out = '';
@@ -112,7 +130,8 @@ R.circles = () => {
   }
   const rest = list.filter(c => !used.has(c.id));
   out += '<div class="sec">' + (W.groups.length && rest.length ? '<div class="wkg" style="padding-left:0">Без папки</div>' : '') +
-    '<div class="grid" style="grid-template-columns:' + cols + '">' + rest.map(c => cellHTML(c, k)).join('') +
+    '<div class="grid' + (bars ? ' bars' : '') + '" style="grid-template-columns:' + cols + '">' +
+    rest.map(c => cellHTML(c, k)).join('') +
     '<button class="addc" data-a="cnew">+ новый круг</button></div></div>';
   return out;
 };
@@ -253,7 +272,9 @@ export function vToday() {
   const hd = '<div class="hd"><div><div class="dt">' + esc(human(parse(k))).toUpperCase() + (isT ? ' · СЕГОДНЯ' : fut ? ' · ВПЕРЁД' : ' · ПРОШЛОЕ') + '</div>' +
     '<h1>' + (isT ? 'Привет, ' + esc(W.name(W.me)) : 'Круги дня') + '</h1></div><div class="rowbtns">' + syncPill(sync) +
     (isT ? '' : '<button class="ghost" data-a="day" data-v="' + W.today + '">сегодня</button>') +
-    '<button class="ghost' + (nav.edit ? ' on' : '') + '" data-a="dedit">' + (nav.edit ? '✓ готово' : 'вид') + '</button></div></div>';
+    (nav.edit
+      ? '<button class="ghost on" data-a="dedit">✓ готово</button>'
+      : '<button class="ghost" data-a="look">вид</button>') + '</div></div>';
   const on = S.ui.dash.filter(x => x.on && WIDGETS[x.id]);
   const html = id => { try { return R[id] ? R[id]() : ''; } catch (e) { console.error(id, e); return ''; } };
   if (nav.edit) return hd + editBoard();
