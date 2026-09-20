@@ -22,6 +22,18 @@ self.addEventListener('fetch', e => {
 /* ---------- уведомления ----------
    Пуш приходит даже когда приложение закрыто и телефон заблокирован:
    здесь его показывают, а по нажатию открывают нужный экран. */
+/* Расписка о получении: отправитель ответа службы доставки не видит,
+   поэтому единственное надёжное подтверждение — отметка на том телефоне,
+   которому уведомление и предназначалось. Лежит в кэше, переживает
+   закрытие приложения, уезжает в общую базу при следующем открытии. */
+const GOT = 'krugi-got';
+async function noteGot(title) {
+  try {
+    const c = await caches.open(GOT);
+    await c.put('/__got', new Response(JSON.stringify({ at: Date.now(), t: title || '' })));
+  } catch {}
+}
+
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; }
@@ -38,6 +50,7 @@ self.addEventListener('push', e => {
       data: { tab },
     });
     // приложение открыто — пусть сразу сходит за свежими данными
+    await noteGot(d.t || '');
     const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of cs) c.postMessage({ krugi: 'push', tab });
   })());

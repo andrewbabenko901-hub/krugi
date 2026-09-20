@@ -15,6 +15,7 @@ import A, { setRender, getPending } from './actions.js';
 import { start as startSync, onSync, schedulePush, setSummary, cycle } from './sync.js';
 import { inbox, feed } from './model.js';
 import * as NOTE from './note.js';
+import * as PUSH from './push.js';
 import { todayKey } from './util.js';
 
 const $v = () => document.getElementById('v');
@@ -85,6 +86,12 @@ function noteState() {
   if (!n) noteShown = 0;
 }
 document.addEventListener('focusout', () => setTimeout(() => { if (pending && !typing()) render(); }, 60));
+
+/* Пока человек печатает, нижнее меню убирается: на айфоне оно всплывает
+   поверх клавиатуры и закрывает поле. */
+const isField = el => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.type !== 'range' && el.type !== 'color';
+document.addEventListener('focusin', e => { if (isField(e.target)) document.body.classList.add('kbd'); });
+document.addEventListener('focusout', e => { if (isField(e.target)) setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove('kbd'); }, 80); });
 
 function navState() {
   const on = !!S;
@@ -227,7 +234,7 @@ const who = new URLSearchParams(location.search).get('who');
 const me = deviceMe() || (who === 'andrey' || who === 'diana' ? who : null);
 if (me) { loadState(me); rebuild(); }
 render(true);
-if (S) startSync();
+if (S) { startSync(); PUSH.syncGot().catch(() => {}); }
 
 const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 if ('serviceWorker' in navigator && secure) {
@@ -237,6 +244,7 @@ if ('serviceWorker' in navigator && secure) {
     const m = e.data || {};
     if (m.krugi !== 'push' && m.krugi !== 'open') return;
     if (m.krugi === 'open' && m.tab) { nav.tab = m.tab; nav.more = 'menu'; }
+    PUSH.syncGot().catch(() => {});             // отметить, что уведомление дошло
     cycle('pull').catch(() => {});
     rebuild(); render(); noteState();
   });

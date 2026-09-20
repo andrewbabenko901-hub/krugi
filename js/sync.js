@@ -131,7 +131,8 @@ export async function buildFile(sum) {
   const file = { app: 'krugi', v: 3, who: S.me, at: now(), profile: S.people[S.me], profileAt: S.profileAt || 0, pub, sec: null };
   // Подписки на уведомления — не в шифре: пара должна их прочитать, чтобы
   // прислать уведомление. Репозиторий приватный, кроме двоих туда никто не ходит.
-  if (S.push && S.push.subs && Object.keys(S.push.subs).length) file.push = { on: S.push.on ? 1 : 0, subs: S.push.subs };
+  if (S.push && S.push.subs && Object.keys(S.push.subs).length)
+    file.push = { on: S.push.on ? 1 : 0, subs: S.push.subs, gotAt: S.push.gotAt || 0 };
   if (foreignSec && sync.needKey) {
     // В базе лежит личное, зашифрованное другим ключом. Молча затереть его
     // нельзя — там могут быть записи с другого устройства. Переносим как есть
@@ -182,6 +183,7 @@ async function absorbOwn(file) {
       if (!a || (b.at || 0) > (a.at || 0)) { p.subs[id] = b; n++; }
     }
     p.on = Object.keys(p.subs).some(id => !p.subs[id].off) ? 1 : 0;
+    if ((file.push.gotAt || 0) > (p.gotAt || 0)) p.gotAt = file.push.gotAt;
   }
   if (file.sec) {
     const key = getKey();

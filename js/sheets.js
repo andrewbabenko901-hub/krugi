@@ -129,7 +129,7 @@ export function sheetEmoji() {
     'data-a="emoq" data-live="1" autocapitalize="off"></div>' +
     (list ? '<div class="sub">' + title + '</div>' + grid(list) : '') +
     (!q && recent.length ? '<div class="sub">Недавние</div>' + grid(recent) : '') +
-    '<div class="boards" style="margin-top:.6rem">' + EMOJI.map((c, i) =>
+    '<div class="pick" style="margin-top:.6rem">' + EMOJI.map((c, i) =>
       '<button class="pb" data-a="emotab" data-v="' + i + '" aria-pressed="' + (i === emoSt.tab) + '">' + c[0] + ' ' + esc(c[1]) + '</button>').join('') + '</div>' +
     grid(cat[2]) +
     '<div class="srow"><button data-a="emoclose" class="k">Готово</button></div>';

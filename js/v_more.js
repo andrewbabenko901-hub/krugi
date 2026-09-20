@@ -236,11 +236,13 @@ function vNote() {
     : stop ? '<div class="alert"><b>!</b><div>' + esc(stop) + '</div></div>'
     : '<div class="infobox">Сейчас новое видно, только когда приложение открыто. Включи уведомления — и просьбы будут приходить на экран блокировки.</div>';
 
+  const got = (S.push && S.push.gotAt) || 0;
   const devs = mine.length
     ? '<div class="card sec"><h3>Мои устройства</h3>' + mine.map(m =>
         '<div class="brow"><div class="bl"><span>' + esc(m.ua || 'устройство') + '</span><span class="sub" style="margin:0">' +
         esc(relTime(m.at)) + '</span></div></div>').join('') +
-      '<div class="sub">Каждое устройство подписывается само: включи уведомления и на планшете, если нужно.</div></div>'
+      '<div class="sub">Каждое устройство подписывается само: включи уведомления и на планшете, если нужно.' +
+      (got ? ' Последнее уведомление пришло сюда ' + esc(relTime(got)) + '.' : ' Сюда пока ничего не приходило.') + '</div></div>'
     : '';
 
   const pair = W.hasPartner
@@ -249,7 +251,10 @@ function vNote() {
         ? 'Уведомления включены: ' + yours.map(s => esc(s.ua || 'устройство')).join(', ') + '. Твои просьбы будут приходить ' + esc(W.dat(W.you)) + ' на телефон.'
         : esc(W.name(W.you)) + ' ещё не ' + W.say(W.you, 'включил', 'включила') + ' уведомления — или её телефон ещё не успел отправить подписку в базу.') + '</div>' +
       '<div class="sub">Файл ' + esc(W.gen(W.you)) + ' получен ' + esc(P && P.at ? relTime(P.at) : 'ни разу') +
-      ', подписок в нём: ' + yours.length + '.</div>' +
+      ', подписок в нём: ' + yours.length + '.' +
+      (PUSH.partnerGotAt()
+        ? ' Последнее уведомление ' + esc(W.name(W.you)) + ' ' + W.say(W.you, 'получил', 'получила') + ' ' + esc(relTime(PUSH.partnerGotAt())) + '.'
+        : ' Ни одного уведомления от нас ' + W.say(W.you, 'он', 'она') + ' пока не ' + W.say(W.you, 'получил', 'получила') + '.') + '</div>' +
       '<div class="srow">' + (yours.length ? '<button data-a="pushping">Отправить проверку ' + esc(W.dat(W.you)) + '</button>' : '') +
       '<button data-a="pushsync">Сверить сейчас</button></div></div>'
     : '';

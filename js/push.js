@@ -134,6 +134,29 @@ export function notifyPartner(title, body, tab) {
       return mark(rs);
     });
 }
+/* ---------- расписки о получении ---------- */
+/** Забрать отметку сервис-воркера о последнем пришедшем уведомлении. */
+export async function readGot() {
+  try {
+    const c = await caches.open('krugi-got');
+    const r = await c.match('/__got');
+    if (!r) return null;
+    return await r.json();
+  } catch { return null; }
+}
+/** Перенести отметку в своё состояние, чтобы она уехала паре. */
+export async function syncGot() {
+  const g = await readGot();
+  if (!g || !g.at) return false;
+  const p = S.push || (S.push = { on: 0, subs: {} });
+  if ((p.gotAt || 0) >= g.at) return false;
+  p.gotAt = g.at;
+  changed('local');
+  return true;
+}
+/** Когда пара в последний раз получила от нас уведомление. */
+export const partnerGotAt = () => (P && P.push && P.push.gotAt) || 0;
+
 /** Проверка: присылаем уведомление самому себе. */
 export async function selfTest() {
   const list = subsOf(S.push);

@@ -91,6 +91,26 @@ export async function encryptPayload(text, p256dh, auth, opts = {}) {
 }
 
 /* ---------- отправка ---------- */
+/* Что браузер помнит о запросе: был ли он вообще и с каким ответом.
+   Для чужого домена почти все поля закрыты, но самого факта и кода ответа
+   (там, где браузер его показывает) хватает, чтобы не гадать. */
+function trace(url, t0) {
+  try {
+    const list = performance.getEntriesByName(url) || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      if (e.startTime + 1 < t0) break;
+      return { seen: true, status: +e.responseStatus || 0 };
+    }
+  } catch {}
+  return { seen: false, status: 0 };
+}
+const code = s => s === 400 ? ' (служба не приняла запрос)'
+  : s === 401 || s === 403 ? ' (подпись не подошла)'
+  : s === 404 || s === 410 ? ' (подписка устарела — надо включить уведомления заново)'
+  : s === 413 ? ' (слишком длинное уведомление)'
+  : s === 429 ? ' (слишком часто)' : '';
+
 /** target: { pub, prv, sub }. Возвращает { ok, status, msg }. */
 export async function pushTo(target, data, opts = {}) {
   const s = target && target.sub;
@@ -99,6 +119,7 @@ export async function pushTo(target, data, opts = {}) {
   const jwt = await vapidJwt(target.prv, aud, opts.who || 'mailto:krugi@users.noreply.github.com');
   const body = await encryptPayload(typeof data === 'string' ? data : JSON.stringify(data), s.keys.p256dh, s.keys.auth);
   let r;
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : 0);
   try {
     r = await fetch(s.endpoint, {
       method: 'POST',
@@ -112,15 +133,21 @@ export async function pushTo(target, data, opts = {}) {
       body,
     });
   } catch (e) {
-    // Служба доставки (Apple, Google) принимает запрос, но ответ браузеру не
-    // показывает: заголовков CORS в нём нет, и fetch падает уже ПОСЛЕ отправки.
-    // Значит уведомление, скорее всего, ушло — просто подтверждения не видно.
-    // Настоящая беда — только когда телефон не в сети.
-    const off = typeof navigator !== 'undefined' && navigator.onLine === false;
-    return off
-      ? { ok: false, status: 0, net: 1, msg: 'телефон не в сети' }
-      : { ok: false, blind: 1, status: 0,
-          msg: 'отправлено, но ' + aud.replace(/^https:\/\//, '') + ' не показывает браузеру ответ' };
+    // Служба доставки (Apple, Google) не ставит на ответ заголовков CORS, и
+    // fetch падает уже ПОСЛЕ отправки. Но след запроса остаётся в измерениях
+    // браузера: по нему видно, ушёл ли он вообще и что ответили.
+    const tr = trace(s.endpoint, t0), host = aud.replace(/^https:\/\//, '');
+    if (typeof navigator !== 'undefined' && navigator.onLine === false)
+      return { ok: false, status: 0, net: 1, msg: 'телефон не в сети' };
+    if (tr.status >= 400)
+      return { ok: false, status: tr.status, gone: tr.status === 404 || tr.status === 410,
+               msg: host + ' отказал: ' + tr.status + code(tr.status) };
+    if (tr.status >= 200 && tr.status < 300)
+      return { ok: true, status: tr.status, msg: 'принято (' + tr.status + ')' };
+    if (!tr.seen)
+      return { ok: false, status: 0, net: 1,
+               msg: 'браузер не выпустил запрос к ' + host + ' — ' + (e.message || e) };
+    return { ok: false, blind: 1, status: 0, msg: 'отправлено, но ' + host + ' не показывает браузеру ответ' };
   }
   if (r.ok) return { ok: true, status: r.status, msg: 'отправлено' };
   const txt = await r.text().catch(() => '');

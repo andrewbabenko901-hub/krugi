@@ -43,11 +43,31 @@ export function buzz(n) { try { navigator.vibrate && navigator.vibrate(n || 12);
    перерисовываются при каждом изменении данных; формы — нет, чтобы не
    стереть то, что человек сейчас набирает. */
 export const sheet = { fn: null, args: null, live: false };
+/* Страница под шторкой фиксируется на своём месте: иначе на айфоне
+   прокручивается то, что сзади, и после закрытия человек оказывается
+   не там, где был. Позицию запоминаем один раз — до фиксации. */
+let lockY = 0;
+function lockPage(on) {
+  const b = document.body;
+  if (on) {
+    if (b.classList.contains('lock')) return;
+    lockY = window.scrollY || 0;
+    b.style.top = -lockY + 'px';
+    b.classList.add('lock');
+  } else {
+    if (!b.classList.contains('lock')) return;
+    b.classList.remove('lock');
+    b.style.top = '';
+    window.scrollTo(0, lockY);
+  }
+}
+
 export function openSheet(fn, args = [], live = false) {
   sheet.fn = fn; sheet.args = args; sheet.live = live;
   document.getElementById('sc').innerHTML = fn(...args);
   document.getElementById('sheet').classList.add('on');
   document.getElementById('bd').classList.add('on');
+  lockPage(true);
 }
 export function refreshSheet(force) {
   if (!sheet.fn || !isSheetOpen()) return;
@@ -57,6 +77,7 @@ export function refreshSheet(force) {
   sc.scrollTop = top;
 }
 export function closeSheet() {
+  lockPage(false);
   document.getElementById('sheet').classList.remove('on');
   document.getElementById('bd').classList.remove('on');
   sheet.fn = null; sheet.args = null; sheet.live = false;
