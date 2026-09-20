@@ -111,8 +111,13 @@ R.circles = () => {
   const bars = faceOf(null) === 'bar';
   const cols = bars ? '1fr' : S.ui.cols ? 'repeat(' + S.ui.cols + ',1fr)'
     : 'repeat(auto-fill,minmax(' + (cellSize() + 1.9) + 'rem,1fr))';
-  const grid = arr => '<div class="grid' + (bars ? ' bars' : '') + '" style="grid-template-columns:' + cols + '">' +
-    arr.map(c => cellHTML(c, k)).join('') + '</div>';
+  // в правке сетка кругов становится коробкой для перетаскивания
+  const dbox = nav.edit ? ' data-dragbox="circles"' : '';
+  const cell = c => nav.edit
+    ? '<div class="cellw drag" data-drag data-id="' + esc(c.id) + '">' + cellHTML(c, k) + '</div>'
+    : cellHTML(c, k);
+  const grid = arr => '<div class="grid' + (bars ? ' bars' : '') + '"' + dbox + ' style="grid-template-columns:' + cols + '">' +
+    arr.map(cell).join('') + '</div>';
   const closed = S.ui.closed || [];
   const used = new Set();
   let out = '';
@@ -130,9 +135,9 @@ R.circles = () => {
   }
   const rest = list.filter(c => !used.has(c.id));
   out += '<div class="sec">' + (W.groups.length && rest.length ? '<div class="wkg" style="padding-left:0">Без папки</div>' : '') +
-    '<div class="grid' + (bars ? ' bars' : '') + '" style="grid-template-columns:' + cols + '">' +
-    rest.map(c => cellHTML(c, k)).join('') +
-    '<button class="addc" data-a="cnew">+ новый круг</button></div></div>';
+    '<div class="grid' + (bars ? ' bars' : '') + '"' + dbox + ' style="grid-template-columns:' + cols + '">' +
+    rest.map(cell).join('') +
+    (nav.edit ? '' : '<button class="addc" data-a="cnew">+ новый круг</button>') + '</div></div>';
   return out;
 };
 
@@ -299,15 +304,15 @@ function editBoard() {
     const w = WIDGETS[x.id];
     let inner = '';
     try { inner = R[x.id] ? R[x.id]() : ''; } catch { inner = ''; }
-    return '<div class="wrapw" data-w="' + esc(x.id) + '">' +
+    return '<div class="wrapw" data-drag data-w="' + esc(x.id) + '">' +
       '<div class="wbar"><span class="wh" aria-hidden="true">⠿</span><b>' + esc(w.t) + '</b>' +
       (nav.wide ? '<button class="ghost' + (side(x) ? ' on' : '') + '" data-a="wside" data-v="' + esc(x.id) + '">' +
         (side(x) ? 'справа' : 'слева') + '</button>' : '') +
       '<button class="ghost" data-a="dtog" data-v="' + esc(x.id) + '">убрать</button></div>' +
       '<div class="wbody">' + inner + '</div></div>';
   };
-  return '<div class="infobox">Возьми виджет за полоску сверху и перетащи, куда нужно. Порядок запомнится сам.</div>' +
-    '<div id="board">' + shown.map(card).join('') + '</div>' +
+  return '<div class="infobox">Виджет берётся за полоску сверху, круги — прямо за себя. Перетащил — порядок запомнился.</div>' +
+    '<div id="board" data-dragbox="board">' + shown.map(card).join('') + '</div>' +
     (hidden.length ? '<div class="card sec"><h3>Убранное</h3><div class="sub">Нажми, чтобы вернуть на экран.</div>' +
       '<div class="pick" style="margin-top:.6rem">' + hidden.map(x =>
         '<button class="pb" data-a="dtog" data-v="' + esc(x.id) + '">＋ ' + esc(WIDGETS[x.id].t) + '</button>').join('') + '</div></div>' : '') +

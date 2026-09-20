@@ -1,5 +1,5 @@
 /* Шторки: круг, дело, настройка круга, обещание, план, карточка, даты. */
-import { esc, fmt, DN, human, parse, addK, wkStartK, money, domainOf, inDays, shortK } from './util.js';
+import { esc, fmt, pl, DN, human, parse, addK, wkStartK, money, domainOf, inDays, shortK } from './util.js';
 import { W, nav } from './ctx.js';
 import { S } from './store.js';
 import { ring, pick, chk, tgl } from './ui.js';
@@ -50,9 +50,26 @@ export function sheetCircle(cid) {
         '<div class="sub">Закрыто ' + (x.d || 0) + ' из ' + (x.a || 0) + '. Крестик — «сдался». Карандаш — дни, исполнитель, приватность.</div>' +
         (fut || !a.length ? '' : '<div class="srow"><button data-a="ins" data-id="' + esc(c.id) + '" class="w">Закрыть круг страховкой (' + W.insLeft(k) + ')</button></div>'));
   }
+  // История круга: две недели полосками, серия и рекорды
+  const hist = (() => {
+    const st = W.cstreak(c, k), best = W.cbest(c);
+    const bars = Array.from({ length: 14 }, (_, i) => {
+      const kk = addK(k, i - 13), xx = W.prog(c, kk), on = W.active(c, kk);
+      const h = on && !xx.empty ? Math.max(8, Math.round(Math.min(1, xx.p) * 100)) : 0;
+      const t = shortK(kk) + (on ? (xx.empty ? ': пусто' : ': ' + Math.round(xx.p * 100) + '%') : ': круг не работает');
+      return '<i title="' + esc(t) + '"' + (kk === k ? ' class="td"' : '') + '><b style="height:' + h + '%;background:' +
+        esc(c.col) + '"></b></i>';
+    }).join('');
+    return '<div class="card sec"><div class="ch"><h3>История</h3>' +
+      (st > 1 ? '<span class="tagi">🔥 ' + st + ' ' + pl(st, ['день', 'дня', 'дней']) + ' подряд</span>' : '') + '</div>' +
+      '<div class="hbars">' + bars + '</div>' +
+      '<div class="sub">Две недели по сегодня. Лучшая серия: <b>' + best.streak + '</b> ' +
+      pl(best.streak, ['день', 'дня', 'дней']) + (c.k === 'count' && best.top ? ', рекорд за день: <b>' + fmt(best.top) + '</b> ' + esc(c.u || '') : '') + '.</div></div>';
+  })();
+
   const kudos = c._ro ? '<div class="kud">' + ['❤️', '👏', '🔥', '💪'].map(e => '<button data-a="kudos" data-v="' + e + '" data-about="' + esc(c.n) + '">' + e + '</button>').join('') + '</div>' : '';
   return '<div class="shead">' + ring(x.empty ? 0 : x.p, c.col, 3.6, .4) + '<div><div class="sn">' + esc(c.i + ' ' + c.n) + '</div><div class="ss">' + esc(circleSub(c)) + '</div></div></div>' +
-    body + kudos + '<div class="srow">' + (c._ro ? '' : '<button data-a="csetup" data-id="' + esc(c.id) + '">Настроить круг</button>') + '<button data-a="close">Закрыть</button></div>';
+    body + hist + kudos + '<div class="srow">' + (c._ro ? '' : '<button data-a="csetup" data-id="' + esc(c.id) + '">Настроить круг</button>') + '<button data-a="close">Закрыть</button></div>';
 }
 
 function shopBody(c, k) {
@@ -149,6 +166,8 @@ export function sheetLook() {
 
     '<div class="card sec">' +
     tgl('ufx', '', S.ui.fx, 'Движение и свет', 'Кольца дорисовываются на глазах, закрытый круг подсвечивается, вода в «стакане» колышется') +
+    tgl('uquick', '', S.ui.quick, 'Плюс прямо на круге', 'У счётчика в углу кнопка «+»: шаг добавляется без открытия круга') +
+    tgl('ufire', '', S.ui.fire, 'Огонёк серии', 'На круге видно, сколько дней подряд он закрыт') +
     tgl('udens', '', S.ui.dens === 'roomy' ? 1 : 0, 'Просторнее', 'Больше воздуха между карточками') + '</div>' +
 
     '<div class="card sec"><h3>Главный экран</h3><div class="sub">Виджеты можно таскать пальцем прямо на экране.</div>' +

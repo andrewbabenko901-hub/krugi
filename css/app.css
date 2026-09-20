@@ -600,3 +600,29 @@ body.hasnote .wrap{padding-top:calc(3.4rem + var(--sat))}
 .s-berry .a{background:#F7EFF4}.s-berry .b{background:#A43C77}.s-berry .c{background:#1F171C}
 .s-neon .a{background:#07080C}.s-neon .b{background:#6BE7FF}.s-neon .c{background:#3DF5A8}
 .grid.bars .addc{min-height:0;padding:.7rem;font-size:.78rem}
+
+/* серия круга и быстрый плюс */
+.cellw{position:relative;display:flex}
+.cellw > .cell{flex:1;min-width:0}
+.qplus{position:absolute;right:.3rem;bottom:.3rem;width:1.6rem;height:1.6rem;border-radius:99rem;
+  background:var(--ink);color:var(--inv);font-size:1rem;line-height:1;display:grid;place-items:center;
+  box-shadow:var(--sh);opacity:.85;transition:transform .12s,opacity .2s;z-index:2}
+.qplus:active{transform:scale(.88);opacity:1}
+.grid.bars .qplus{right:.45rem;bottom:50%;transform:translateY(50%)}
+.grid.bars .qplus:active{transform:translateY(50%) scale(.88)}
+.cell .fire{font-size:.58rem;color:var(--gold);font-weight:600;background:var(--goldbg);
+  border:1px solid var(--gold);border-radius:99rem;padding:0 .25rem;line-height:1.25;white-space:nowrap}
+.cell .fire.corner{position:absolute;left:.45rem;bottom:.4rem}
+.cellw.qw .nm,.cellw.qw .nx{padding-right:1.5rem}
+.cell.f-bar .bf{font-size:.62rem;color:var(--gold);font-weight:600}
+.hbars{display:flex;gap:.18rem;align-items:flex-end;height:3.2rem;margin-top:.6rem}
+.hbars i{flex:1;height:100%;background:var(--line2);border-radius:.2rem;display:flex;align-items:flex-end;overflow:hidden}
+.hbars i.td{outline:1px solid var(--ink);outline-offset:1px}
+.hbars i b{display:block;width:100%;border-radius:.2rem;transition:height .4s}
+
+/* перетаскивание кругов в правке */
+.wrapw[data-w=circles] .wbody{pointer-events:auto}
+.cellw.drag{touch-action:none;cursor:grab;position:relative}
+.cellw.drag .cell{pointer-events:none}
+.cellw.drag.dragging{z-index:6;opacity:.96;filter:drop-shadow(0 .6rem 1.2rem rgba(0,0,0,.28))}
+.cellw.drag.dragging .cell{border-color:var(--ink)}

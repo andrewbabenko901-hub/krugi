@@ -76,38 +76,51 @@ const cBadges = c => (c.vis === 'prv' ? '<span class="badge2">🔒</span>'
 function capOf(c, k) {
   const cap = S.ui.cap;
   if (cap === 2) return '';
-  const nm = '<div class="nm">' + esc(c.i) + ' ' + esc(c.n) + '</div>';
+  const fire = S.ui.fire === 0 ? 0 : W.cstreak(c, k);
+  const nm = '<div class="nm">' + esc(c.i) + ' ' + esc(c.n) +
+    (fire > 1 ? ' <span class="fire">🔥' + fire + '</span>' : '') + '</div>';
   return cap === 0 ? nm : nm + '<div class="nx">' + esc(nextOf(c, k)) + '</div>';
 }
 
 export function cellHTML(c, k, size) {
   const x = W.prog(c, k), fut = k > W.today, done = !x.empty && x.p >= 1;
   const face = faceOf(c), p = x.empty ? 0 : x.p;
+  // быстрый плюс у счётчика: самое частое действие не должно стоить шторки
+  const quick = c.k === 'count' && !c._ro && !fut && !c.off && W.active(c, k) && S.ui.quick !== 0;
+  const fire = S.ui.fire === 0 ? 0 : W.cstreak(c, k);
   // кольцо оживает только там, где доля изменилась с прошлой отрисовки
   const moved = S.ui.fx && movedSince(c.id + '|' + k, p) ? ' grow' : '';
   const cls = 'cell f-' + face + (done ? ' done' : '') + (fut ? ' locked' : '') + moved;
-  const open = '<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' + cBadges(c);
+  const open = '<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' + cBadges(c) +
+    (fire > 1 && S.ui.cap === 2 ? '<span class="fire corner">🔥' + fire + '</span>' : '');
+  // ячейка со «своими» кнопками живёт в обёртке: кнопку в кнопку не вложить
+  const wrap = h => quick
+    ? '<div class="cellw qw">' + h + '<button class="qplus" data-a="cquick" data-id="' + esc(c.id) +
+      '" aria-label="Добавить ' + esc(fmt(c.stp || 1)) + ' ' + esc(c.u || '') + '">+</button></div>'
+    : h;
 
   if (face === 'bar') {
     const val = c.k === 'count' ? Math.round(p * 100) + '%'
       : c.k === 'mood' ? (x.v ? MOODS[x.v - 1][0] : '—')
       : x.a ? x.d + ' / ' + x.a : '—';
-    return '<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' +
+    return wrap('<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '">' +
       '<span class="bi" style="background:' + esc(c.col) + '22">' + esc(c.i) + '</span>' +
       '<span class="bn"><b>' + esc(c.n) + '</b><small>' + esc(nextOf(c, k)) + '</small></span>' +
       '<span class="bp"><i style="width:' + Math.round(p * 100) + '%;background:' + esc(c.col) + '"></i></span>' +
-      '<span class="bv">' + esc(val) + '</span>' + (done ? '<span class="bd">✓</span>' : '') + '</button>';
+      '<span class="bv">' + esc(val) + '</span>' +
+      (fire > 1 ? '<span class="bf">🔥' + fire + '</span>' : '') +
+      (done ? '<span class="bd">✓</span>' : '') + '</button>');
   }
   if (face === 'tile') {
     const sz = size || cellSize();
-    return open + '<span class="tl" style="min-height:' + sz + 'rem;background:' + esc(c.col) +
+    return wrap(open + '<span class="tl" style="min-height:' + sz + 'rem;background:' + esc(c.col) +
       (done ? '2E' : '14') + ';border-color:' + esc(c.col) + (done ? '' : '33') + '">' +
       '<span class="tv">' + centerOf(c, k, x, done) + '</span>' +
       '<span class="tb"><i style="width:' + Math.round(p * 100) + '%;background:' + esc(c.col) + '"></i></span></span>' +
-      capOf(c, k) + '</button>';
+      capOf(c, k) + '</button>');
   }
-  return open + faceSvg(c, x, size || cellSize()) +
-    '<div class="cen">' + centerOf(c, k, x, done) + '</div>' + capOf(c, k) + '</button>';
+  return wrap(open + faceSvg(c, x, size || cellSize()) +
+    '<div class="cen">' + centerOf(c, k, x, done) + '</div>' + capOf(c, k) + '</button>');
 }
 
 /** Строка дела в списке. */

@@ -142,38 +142,54 @@ wideMq.addEventListener && wideMq.addEventListener('change', () => { nav.wide = 
    Палец ведёт виджет, соседи расступаются: как только середина взятого
    переходит середину соседа, они меняются местами прямо в разметке.
    Отпустил — порядок читается из разметки и сохраняется. */
+/* Таскать можно всё, что помечено data-drag внутри коробки data-dragbox:
+   виджеты берутся за полоску сверху, круги — прямо за себя. */
 let drag = null;
-function board() { return document.getElementById('board'); }
 document.addEventListener('pointerdown', e => {
   if (!nav.edit || drag) return;
-  const bar = e.target.closest('.wbar');
-  if (!bar || e.target.closest('button')) return;      // кнопки на полоске — не перетаскивание
-  const el = bar.closest('.wrapw'), box = board();
-  if (!el || !box) return;
+  const el = e.target.closest('[data-drag]');
+  if (!el) return;
+  const box = el.closest('[data-dragbox]');
+  if (!box) return;
+  // у виджета ручка — полоска сверху, чтобы внутри него можно было целиться
+  if (box.dataset.dragbox === 'board' && !e.target.closest('.wbar')) return;
+  if (e.target.closest('button') && !el.matches('button')) return;
   e.preventDefault();
-  drag = { el, box, y: e.clientY, id: e.pointerId };
+  drag = { el, box, kind: box.dataset.dragbox, x: e.clientX, y: e.clientY, id: e.pointerId };
   el.classList.add('dragging');
   el.setPointerCapture(e.pointerId);
   try { navigator.vibrate && navigator.vibrate(8); } catch {}
 });
 document.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id) return;
-  drag.el.style.transform = 'translateY(' + (e.clientY - drag.y) + 'px)';
-  // Сравниваем с пальцем, а не с самим виджетом: резкий рывок через несколько
+  const grid = drag.kind !== 'board';
+  drag.el.style.transform = grid
+    ? 'translate(' + (e.clientX - drag.x) + 'px,' + (e.clientY - drag.y) + 'px)'
+    : 'translateY(' + (e.clientY - drag.y) + 'px)';
+  // Сравниваем с пальцем, а не с самой ячейкой: резкий рывок через несколько
   // соседей переставляет столько раз, сколько нужно, а не один.
   for (let step = 0; step < 20; step++) {
     let moved = false;
     for (const s of drag.box.children) {
-      if (s === drag.el) continue;
-      const sr = s.getBoundingClientRect(), smid = sr.top + sr.height / 2;
+      if (s === drag.el || !s.matches('[data-drag]')) continue;
+      const sr = s.getBoundingClientRect();
       const below = !!(drag.el.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
-      if ((below && e.clientY > smid) || (!below && e.clientY < smid)) {
-        drag.box.insertBefore(drag.el, below ? s.nextSibling : s);
-        drag.y = e.clientY;                            // встали на новое место — считаем заново
-        drag.el.style.transform = '';
-        moved = true;
-        break;
+      let over;
+      if (grid) {
+        // в сетке: палец внутри соседа — встаём в его половину
+        if (e.clientX < sr.left || e.clientX > sr.right || e.clientY < sr.top || e.clientY > sr.bottom) continue;
+        over = e.clientX > sr.left + sr.width / 2 ? 'after' : 'before';
+        if ((below && over === 'before') || (!below && over === 'after')) over = below ? 'before' : 'after';
+      } else {
+        const smid = sr.top + sr.height / 2;
+        if (!((below && e.clientY > smid) || (!below && e.clientY < smid))) continue;
+        over = below ? 'after' : 'before';
       }
+      drag.box.insertBefore(drag.el, over === 'after' ? s.nextSibling : s);
+      drag.x = e.clientX; drag.y = e.clientY;          // встали на новое место — считаем заново
+      drag.el.style.transform = '';
+      moved = true;
+      break;
     }
     if (!moved) break;
   }
@@ -182,10 +198,17 @@ function dropDrag() {
   if (!drag) return;
   drag.el.classList.remove('dragging');
   drag.el.style.transform = '';
-  const order = [...drag.box.children].map(x => x.dataset.w);
-  const rest = S.ui.dash.filter(x => !order.includes(x.id));
-  S.ui.dash = order.map(id => S.ui.dash.find(x => x.id === id)).concat(rest);
+  const kind = drag.kind, box = drag.box;
   drag = null;
+  const ids = [...box.children].filter(x => x.matches('[data-drag]')).map(x => x.dataset.w || x.dataset.id);
+  if (kind === 'board') {
+    const rest = S.ui.dash.filter(x => !ids.includes(x.id));
+    S.ui.dash = ids.map(id => S.ui.dash.find(x => x.id === id)).filter(Boolean).concat(rest);
+  } else {
+    // порядок кругов: переставленные встают первыми, остальные — как были
+    const rest = (S.ui.corder || []).filter(id => !ids.includes(id));
+    S.ui.corder = ids.concat(rest);
+  }
   changed('ui');
 }
 document.addEventListener('pointerup', dropDrag);
@@ -195,6 +218,7 @@ document.addEventListener('pointercancel', dropDrag);
 document.addEventListener('click', e => {
   if (e.target.id === 'bd') { closeSheet(); return; }
   const el = e.target.closest('[data-a]'); if (!el) return;
+  if (nav.edit && el.closest('[data-drag]')) return;   // в правке нажатия по кругам не считаются
   if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return;   // для них — change
   const fn = A[el.dataset.a]; if (!fn) return;
   e.preventDefault();

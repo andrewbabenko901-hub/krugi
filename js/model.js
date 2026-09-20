@@ -122,6 +122,40 @@ export function buildWorld(S, P) {
   };
   W.cdone = (c, k) => { const x = W.prog(c, k); return x.empty || x.p >= 1; };
 
+  /* Серия круга: сколько дней подряд он закрыт. Сегодня не наказывает —
+     если сегодня ещё не закрыт, считаем от вчера: день не кончился. */
+  W.cstreak = (c, k) => {
+    let n = 0, day = k || W.today;
+    if (!W.active(c, day) || W.prog(c, day).empty || W.prog(c, day).p < 1) day = addK(day, -1);
+    for (let i = 0; i < 400; i++) {
+      if (!W.active(c, day)) { day = addK(day, -1); continue; }   // выходной круга серию не рвёт
+      const x = W.prog(c, day);
+      if (x.empty || x.p < 1) break;
+      n++; day = addK(day, -1);
+    }
+    return n;
+  };
+  /* Лучшая серия и лучший день счётчика — за всю историю отметок. */
+  W.cbest = c => {
+    const days = [];
+    if (c.k === 'count' || c.k === 'mood') { const m = S.data.counts[c.id] || {}; for (const d in m) days.push(d); }
+    else for (const t of W.tasksAll(c.id)) { const m = S.data.log[t.id] || {}; for (const d in m) days.push(d); }
+    if (!days.length) return { streak: 0, top: 0 };
+    days.sort();
+    let run = 0, best = 0, prev = null, top = 0;
+    for (let day = days[0]; day <= W.today; day = addK(day, 1)) {
+      if (!W.active(c, day)) continue;
+      const x = W.prog(c, day);
+      if (c.k === 'count') top = Math.max(top, x.v || 0);
+      if (!x.empty && x.p >= 1) { run++; best = Math.max(best, run); } else run = 0;
+      prev = day;
+    }
+    void prev;
+    return { streak: best, top };
+  };
+  /** Все дела круга, включая другие дни: для истории и рекордов. */
+  W.tasksAll = cid => W.tasks.filter(t => t.c === cid);
+
   /** День человека: сколько на нём всего и сколько закрыто. */
   W.dayOf = (person, k) => {
     if (person !== me) {

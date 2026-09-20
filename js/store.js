@@ -55,6 +55,8 @@ export function defaultUI() {
     cw: 1,             // толщина кольца: 0..3
     cap: 1,            // подпись под кругом: 0 только название, 1 с делом, 2 без подписи
     fx: 1,             // движение и свет: 1 включено
+    quick: 1,          // плюс прямо в ячейке счётчика
+    fire: 1,           // огонёк серии на круге
     skin: 'paper',     // палитра оформления
     wk: { group: 'circle', heat: 1, tot: 1, weekend: 1, count: 1, once: 1, done: 1, partner: 1, priv: 1,
           sort: 'circle', fc: 'all', fw: 'all', sum: 1, rings: 1 },

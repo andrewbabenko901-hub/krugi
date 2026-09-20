@@ -110,6 +110,17 @@ function checkFull(wasFull) {
   if (!wasFull && W.full(W.me, nav.VD) && nav.VD === W.today)
     setTimeout(() => { confetti(); toast('День закрыт целиком. Серия: ' + W.sum().streak + '.'); }, 250);
 }
+/* Плюс прямо в ячейке: шаг счётчика, без шторки. */
+A.cquick = (d, el) => {
+  const c = W.circleById[d.id]; if (!c || c.k !== 'count') return;
+  const wasFull = W.full(W.me, nav.VD), was = W.prog(c, nav.VD).p >= 1;
+  setCount(c.id, nav.VD, Math.max(0, W.cval(c, nav.VD) + (+c.stp || 1)));
+  buzz(10);
+  const now2 = W.prog(c, nav.VD).p >= 1;
+  if (!was && now2) { if (S.ui.fx) confetti([c.col, c.col, W.col(W.me)]); toast('«' + c.n + '» — цель взята.'); }
+  checkFull(wasFull);
+  void el;
+};
 A.mood = d => {
   const wasFull = W.full(W.me, nav.VD);
   const cur = W.cval(W.circleById[d.id], nav.VD);
@@ -287,6 +298,8 @@ A.ucap = d => setUI('cap', +d.v);
 A.uskin = d => { setUI('skin', d.v); toast('Палитра: ' + ((SH.SKINS.find(s => s[0] === d.v) || [])[1] || d.v) + '.'); };
 A.ufx = () => { setUI('fx', S.ui.fx ? 0 : 1); if (S.ui.fx) confetti([W.col(W.me)]); };
 A.udens = () => setUI('dens', S.ui.dens === 'roomy' ? 'normal' : 'roomy');
+A.uquick = () => setUI('quick', S.ui.quick ? 0 : 1);
+A.ufire = () => setUI('fire', S.ui.fire ? 0 : 1);
 A.cface = d => { readCF(); SH.CF.face = d.v; refreshSheet(true); };
 A.wrn = d => { S.ui.wrn = +d.v; changed('ui'); };
 A.lookreset = () => {
