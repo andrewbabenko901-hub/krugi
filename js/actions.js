@@ -39,7 +39,11 @@ A.tab = d => {
   if (d.v === 'pair') { S.seen.feed = now(); NOTE.markAll(); saveLocal(); }   // открыл «Вместе» — всё увидел
   render(); scrollTo(0, 0); buzz(8);
 };
-A.more = d => { closeSheet(); nav.tab = 'more'; nav.more = d.v; render(); scrollTo(0, 0); buzz(8); };
+A.more = d => {
+  closeSheet(); nav.tab = 'more'; nav.more = d.v; render(); scrollTo(0, 0); buzz(8);
+  // Экран уведомлений всегда открывается со свежим файлом пары
+  if (d.v === 'note' && ready()) cycle('pull').then(() => render()).catch(() => {});
+};
 A.day = d => { nav.VD = d.v; nav.tab = 'today'; render(); buzz(8); };
 A.shift = d => { nav.VD = addK(nav.VD, +d.v); render(); buzz(8); };
 A.close = () => closeSheet();
@@ -415,14 +419,30 @@ A.pushoff = async () => { await PUSH.disable(); toast('Уведомления н
 A.pushtest = async (d, el) => {
   el.disabled = true;
   const r = await PUSH.selfTest();
-  toast(r.ok ? 'Отправлено — уведомление должно прийти через пару секунд.' : 'Не дошло: ' + r.msg);
-  el.disabled = false;
+  toast(r.ok ? 'Отправлено — уведомление должно прийти через пару секунд.'
+    : r.blind ? 'Отправлено. Apple не отвечает браузеру — смотри, пришло ли само уведомление.'
+    : 'Не ушло: ' + r.msg);
+  el.disabled = false; render();
 };
 A.pushping = async (d, el) => {
-  el.disabled = true;
+  el.disabled = true; const t = el.textContent; el.textContent = 'Сверяюсь…';
+  // Подписка пары приезжает вместе с её файлом. Прежде чем говорить «у неё
+  // не включено», надо этот файл перечитать — иначе судим по вчерашнему.
+  if (ready()) { try { await cycle('pull'); } catch {} }
+  el.textContent = t;
+  if (!PUSH.partnerOn()) {
+    toast('У ' + W.gen(W.you) + ' уведомления пока не включены — или её телефон ещё не отправил подписку в базу.');
+    el.disabled = false; render(); return;
+  }
   const ok = await PUSH.notifyPartner('🔔 ' + W.name(W.me), 'Проверка связи. Всё доходит.', 'pair');
-  toast(ok ? 'Ушло ' + W.dat(W.you) + '.' : 'Не ушло: у ' + W.gen(W.you) + ' уведомления не включены.');
-  el.disabled = false;
+  toast(ok ? 'Ушло ' + W.dat(W.you) + '. Спроси, пришло ли.' : 'Не ушло: ' + PUSH.pushState.msg);
+  el.disabled = false; render();
+};
+A.pushsync = async (d, el) => {
+  el.disabled = true; const t = el.textContent; el.textContent = 'Сверяюсь…';
+  try { await cycle('pull'); } catch (e) { toast(e.message || String(e)); }
+  el.textContent = t; el.disabled = false; render();
+  toast(PUSH.partnerOn() ? 'Подписка ' + W.gen(W.you) + ' получена.' : 'В файле ' + W.gen(W.you) + ' подписки пока нет.');
 };
 A.propacc = d => {
   const p = W.pledges.find(x => x.id === d.id); if (!p) return;

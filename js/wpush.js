@@ -112,10 +112,15 @@ export async function pushTo(target, data, opts = {}) {
       body,
     });
   } catch (e) {
-    // Обычно это значит, что браузер не выпустил запрос наружу (CORS) или
-    // телефон не в сети. Пишем понятно: по этой строке потом и разбираемся.
-    return { ok: false, status: 0, net: 1,
-             msg: 'браузер не пустил запрос к службе доставки (' + aud + '): ' + (e.message || e) };
+    // Служба доставки (Apple, Google) принимает запрос, но ответ браузеру не
+    // показывает: заголовков CORS в нём нет, и fetch падает уже ПОСЛЕ отправки.
+    // Значит уведомление, скорее всего, ушло — просто подтверждения не видно.
+    // Настоящая беда — только когда телефон не в сети.
+    const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return off
+      ? { ok: false, status: 0, net: 1, msg: 'телефон не в сети' }
+      : { ok: false, blind: 1, status: 0,
+          msg: 'отправлено, но ' + aud.replace(/^https:\/\//, '') + ' не показывает браузеру ответ' };
   }
   if (r.ok) return { ok: true, status: r.status, msg: 'отправлено' };
   const txt = await r.text().catch(() => '');

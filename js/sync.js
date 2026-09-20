@@ -212,9 +212,16 @@ export async function cycle(kind = 'pull') {
     status('busy', 'синхронизация…');
     try {
       await pullOwn();
-      if (dirty || kind === 'push' || kind === 'first') await pushOwn();
+      // Своя запись может не пройти (сеть, конфликт), но файл пары к этому
+      // отношения не имеет: читаем её в любом случае, иначе не увидим ни
+      // просьб, ни подписки на уведомления.
+      let pushErr = null;
+      if (dirty || kind === 'push' || kind === 'first') {
+        try { await pushOwn(); } catch (e) { pushErr = e; }
+      }
       await pullPartner();
       sync.pulledAt = now();
+      if (pushErr) throw pushErr;
       status('ok', 'синхронизировано');
     } catch (e) {
       status('err', e.message || String(e));

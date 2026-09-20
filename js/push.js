@@ -113,13 +113,13 @@ export async function disable() {
 /* ---------- отправка ---------- */
 /* Чем закончилась последняя отправка — чтобы на экране уведомлений было
    видно, дошло или нет, а не гадать по молчанию телефона. */
-export const pushState = { at: 0, ok: 0, msg: '' };
+export const pushState = { at: 0, ok: 0, msg: '' };   // ok: 1 — точно ушло, 2 — ушло вслепую, 0 — нет
 function mark(rs) {
-  const good = rs.find(r => r.ok), bad = rs.find(r => !r.ok);
+  const good = rs.find(r => r.ok), blind = rs.find(r => r.blind), bad = rs.find(r => !r.ok && !r.blind);
   pushState.at = Date.now();
-  pushState.ok = good ? 1 : 0;
-  pushState.msg = good ? 'ушло' : (bad && bad.msg) || 'не ушло';
-  return !!good;
+  pushState.ok = good ? 1 : blind ? 2 : 0;
+  pushState.msg = good ? 'ушло' : blind ? blind.msg : (bad && bad.msg) || 'не ушло';
+  return !!(good || blind);
 }
 
 /** Прислать паре уведомление. Тихо ничего не делает, если пара их не включила. */

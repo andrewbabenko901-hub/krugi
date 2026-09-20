@@ -247,13 +247,19 @@ function vNote() {
     ? '<div class="card sec"><h3>' + esc(W.name(W.you)) + '</h3><div class="sub">' +
       (yours.length
         ? 'Уведомления включены: ' + yours.map(s => esc(s.ua || 'устройство')).join(', ') + '. Твои просьбы будут приходить ' + esc(W.dat(W.you)) + ' на телефон.'
-        : esc(W.name(W.you)) + ' ещё не ' + W.say(W.you, 'включил', 'включила') + ' уведомления: открыть «Ещё → Уведомления» и нажать одну кнопку.') + '</div>' +
-      (yours.length ? '<div class="srow"><button data-a="pushping">Отправить проверку ' + esc(W.dat(W.you)) + '</button></div>' : '') + '</div>'
+        : esc(W.name(W.you)) + ' ещё не ' + W.say(W.you, 'включил', 'включила') + ' уведомления — или её телефон ещё не успел отправить подписку в базу.') + '</div>' +
+      '<div class="sub">Файл ' + esc(W.gen(W.you)) + ' получен ' + esc(P && P.at ? relTime(P.at) : 'ни разу') +
+      ', подписок в нём: ' + yours.length + '.</div>' +
+      '<div class="srow">' + (yours.length ? '<button data-a="pushping">Отправить проверку ' + esc(W.dat(W.you)) + '</button>' : '') +
+      '<button data-a="pushsync">Сверить сейчас</button></div></div>'
     : '';
 
-  const last = PUSH.pushState.at
-    ? '<div class="sub">Последняя отправка ' + esc(relTime(PUSH.pushState.at)) + ': ' +
-      (PUSH.pushState.ok ? 'ушла.' : '<b>не ушла</b> — ' + esc(PUSH.pushState.msg)) + '</div>'
+  const ps = PUSH.pushState;
+  const last = ps.at
+    ? '<div class="sub">Последняя отправка ' + esc(relTime(ps.at)) + ': ' +
+      (ps.ok === 1 ? 'ушла.'
+        : ps.ok === 2 ? 'ушла. Apple и Google не показывают браузеру свой ответ, поэтому подтверждения нет — дошло или нет, видно по самому уведомлению на телефоне.'
+        : '<b>не ушла</b> — ' + esc(ps.msg)) + '</div>'
     : '';
   return header('уведомления', 'На телефон') + back + head + last +
     '<div class="card sec"><h3>На этом устройстве</h3>' +
