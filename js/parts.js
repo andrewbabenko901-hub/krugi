@@ -28,6 +28,10 @@ export function visTag(x) {
   if (x.vis === 'shared') return '<span class="tagi">🤝 общее</span>';
   return '';
 }
+/** Название круга для списков выбора: чужой круг подписан хозяином,
+    иначе два «Дома» в одном списке не различить. */
+export const circleLabel = c => c.i + ' ' + c.n + (c.own && c.own !== W.me ? ' · ' + W.gen(c.own) : '');
+
 export function circleSub(c) {
   const kind = c.k === 'count' ? 'счётчик · ' + (c.per === 'week' ? 'в неделю ' : '') + fmt(c.g) + ' ' + c.u
     : c.k === 'shop' ? 'покупки' : c.k === 'mood' ? 'настроение' : 'папка дел';

@@ -12,6 +12,7 @@ export const nav = {
   pledgeTab: 'me',
   link: null,            // какой код привязки показан: 'partner' | 'mine'
   wide: false,
+  edit: false,           // правка главного экрана: виджеты можно таскать
 };
 
 export let W = null;

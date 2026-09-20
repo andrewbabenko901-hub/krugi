@@ -1,7 +1,7 @@
 /* ============================================================
    Круги — точка входа: загрузка, перерисовка, события.
    ============================================================ */
-import { S, deviceMe, loadState, onChange, oldPrototype, saveLocal } from './store.js';
+import { S, P, deviceMe, loadState, onChange, oldPrototype, saveLocal, changed } from './store.js';
 import { W, nav, rebuild } from './ctx.js';
 import { refreshSheet, isSheetOpen, sheet, closeSheet } from './ui.js';
 import { vToday } from './v_main.js';
@@ -12,8 +12,9 @@ import { vWish } from './v_wish.js';
 import { vMore } from './v_more.js';
 import { vHello, vStart, vSetupLink } from './sheets.js';
 import A, { setRender, getPending } from './actions.js';
-import { start as startSync, onSync, schedulePush, setSummary } from './sync.js';
+import { start as startSync, onSync, schedulePush, setSummary, cycle } from './sync.js';
 import { inbox, feed } from './model.js';
+import * as NOTE from './note.js';
 import { todayKey } from './util.js';
 
 const $v = () => document.getElementById('v');
@@ -50,7 +51,11 @@ function render(force) {
   if (!force && typing()) { pending = true; return; }
   pending = false;
   if (!W) rebuild();
-  if (!S.started && !S.data.circles.length && !S.migrated) { $v().innerHTML = vStart(); navState(); return; }
+  // Экран «с чего начнём» держим только на голом месте. Если файл пары уже
+  // приехал, человек давно подключён: закрывать ему приложение этим экраном
+  // нельзя — он не увидит ни просьб, ни общих кругов. Создать круги можно и
+  // с главного экрана.
+  if (!S.started && !S.data.circles.length && !S.migrated && !P) { $v().innerHTML = vStart(); navState(); return; }
   let html = '';
   try {
     html = nav.tab === 'today' ? vToday() : nav.tab === 'week' ? vWeek() : nav.tab === 'plan' ? vPlan()
@@ -62,6 +67,22 @@ function render(force) {
   }
   $v().innerHTML = html;
   navState();
+  noteState();
+}
+
+/* ---------- полоска «пришло от пары» ----------
+   Живёт поверх экранов: перерисовка главного её не трогает, а новая
+   весточка коротко подрагивает телефоном, если он в руках. */
+let noteShown = 0;
+function noteState() {
+  const box = document.getElementById('note');
+  if (!box) return;
+  const n = S && W ? NOTE.compute() : null;
+  box.innerHTML = n ? NOTE.html() : '';
+  box.hidden = !n;
+  document.body.classList.toggle('hasnote', !!n);
+  if (n && n.at !== noteShown) { noteShown = n.at; try { navigator.vibrate && navigator.vibrate([10, 40, 10]); } catch {} }
+  if (!n) noteShown = 0;
 }
 document.addEventListener('focusout', () => setTimeout(() => { if (pending && !typing()) render(); }, 60));
 
@@ -83,6 +104,7 @@ onChange(why => {
   if (why === 'ui') schedulePush(8000);          // вид экрана тоже сохраняется, но без спешки
   render(why === 'local' || why === 'ui' || why === 'import');
   refreshSheet();
+  noteState();
 });
 onSync(kind => {
   if (kind === 'status') {                      // только значок в шапке
@@ -91,7 +113,7 @@ onSync(kind => {
     else if (nav.tab === 'more') render();
     return;
   }
-  rebuild(); render(); refreshSheet();
+  rebuild(); render(); refreshSheet(); noteState();
 });
 setSummary(() => { try { return W ? W.sum() : null; } catch { return null; } });
 setRender(render);
@@ -106,6 +128,59 @@ setInterval(() => {
 const wideMq = matchMedia('(min-width: 64rem)');
 nav.wide = wideMq.matches;
 wideMq.addEventListener && wideMq.addEventListener('change', () => { nav.wide = wideMq.matches; render(); });
+
+/* ---------- перетаскивание виджетов ----------
+   Палец ведёт виджет, соседи расступаются: как только середина взятого
+   переходит середину соседа, они меняются местами прямо в разметке.
+   Отпустил — порядок читается из разметки и сохраняется. */
+let drag = null;
+function board() { return document.getElementById('board'); }
+document.addEventListener('pointerdown', e => {
+  if (!nav.edit || drag) return;
+  const bar = e.target.closest('.wbar');
+  if (!bar || e.target.closest('button')) return;      // кнопки на полоске — не перетаскивание
+  const el = bar.closest('.wrapw'), box = board();
+  if (!el || !box) return;
+  e.preventDefault();
+  drag = { el, box, y: e.clientY, id: e.pointerId };
+  el.classList.add('dragging');
+  el.setPointerCapture(e.pointerId);
+  try { navigator.vibrate && navigator.vibrate(8); } catch {}
+});
+document.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  drag.el.style.transform = 'translateY(' + (e.clientY - drag.y) + 'px)';
+  // Сравниваем с пальцем, а не с самим виджетом: резкий рывок через несколько
+  // соседей переставляет столько раз, сколько нужно, а не один.
+  for (let step = 0; step < 20; step++) {
+    let moved = false;
+    for (const s of drag.box.children) {
+      if (s === drag.el) continue;
+      const sr = s.getBoundingClientRect(), smid = sr.top + sr.height / 2;
+      const below = !!(drag.el.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if ((below && e.clientY > smid) || (!below && e.clientY < smid)) {
+        drag.box.insertBefore(drag.el, below ? s.nextSibling : s);
+        drag.y = e.clientY;                            // встали на новое место — считаем заново
+        drag.el.style.transform = '';
+        moved = true;
+        break;
+      }
+    }
+    if (!moved) break;
+  }
+});
+function dropDrag() {
+  if (!drag) return;
+  drag.el.classList.remove('dragging');
+  drag.el.style.transform = '';
+  const order = [...drag.box.children].map(x => x.dataset.w);
+  const rest = S.ui.dash.filter(x => !order.includes(x.id));
+  S.ui.dash = order.map(id => S.ui.dash.find(x => x.id === id)).concat(rest);
+  drag = null;
+  changed('ui');
+}
+document.addEventListener('pointerup', dropDrag);
+document.addEventListener('pointercancel', dropDrag);
 
 /* ---------- события ---------- */
 document.addEventListener('click', e => {
@@ -126,6 +201,11 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset && el.dataset.bind) bind(el.dataset.bind, el.value);
+  // поля, которые должны отзываться на каждую букву (поиск эмодзи)
+  if (el.dataset && el.dataset.a && el.dataset.live && A[el.dataset.a]) {
+    try { A[el.dataset.a](el.dataset, el, e); } catch (err) { console.error(err); }
+    return;
+  }
   // ползунок счётчика: пишем значение сразу, а шторку не перерисовываем,
   // иначе ползунок пересоздаётся под пальцем и перетаскивание обрывается
   if (el.dataset && el.dataset.a === 'crange' && sheet.args) {
@@ -149,6 +229,18 @@ if (me) { loadState(me); rebuild(); }
 render(true);
 if (S) startSync();
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+if ('serviceWorker' in navigator && secure) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
+  // пуш пришёл: сходить за свежими данными; нажали на уведомление — открыть экран
+  navigator.serviceWorker.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.krugi !== 'push' && m.krugi !== 'open') return;
+    if (m.krugi === 'open' && m.tab) { nav.tab = m.tab; nav.more = 'menu'; }
+    cycle('pull').catch(() => {});
+    rebuild(); render(); noteState();
+  });
 }
+// открыли по ссылке из уведомления
+const wantTab = new URLSearchParams(location.search).get('tab');
+if (S && wantTab && ['today', 'week', 'plan', 'pair', 'wish', 'more'].includes(wantTab)) { nav.tab = wantTab; render(true); }

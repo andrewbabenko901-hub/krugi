@@ -1,7 +1,7 @@
 /* Ещё: статистика, достижения, настройки, синхронизация, справка. */
 import { esc, fmt, pl, DN, addK, range, parse, wkStartK, key, relTime } from './util.js';
 import { W, nav } from './ctx.js';
-import { S } from './store.js';
+import { S, P } from './store.js';
 import { pick, tgl, av } from './ui.js';
 import { BADGES, levelOf, xpFor } from './model.js';
 import { header, circleSub } from './parts.js';
@@ -9,6 +9,7 @@ import { pasteBlock } from './sheets.js';
 import { sync, getCfg, getKey, ready, DEFAULT_CFG, TOKEN_URL, makeSetupLink } from './sync.js';
 import { qrSvg } from './qr.js';
 import { cryptoOk } from './crypto.js';
+import * as PUSH from './push.js';
 import { WIDGETS } from './v_main.js';
 
 const back = '<button class="ghost" data-a="more" data-v="menu">‹ назад</button>';
@@ -19,6 +20,7 @@ export function vMore() {
   if (sub === 'badges') return vBadges();
   if (sub === 'set') return vSet();
   if (sub === 'sync') return vSync();
+  if (sub === 'note') return vNote();
   if (sub === 'help') return vHelp();
   const L = W.lvl();
   const items = [
@@ -26,6 +28,7 @@ export function vMore() {
     ['badges', '🏅', 'Достижения', 'Уровень ' + L.L + ' · ' + W.sum().badges.length + ' из ' + BADGES.length + ' значков'],
     ['set', '⚙️', 'Настройки', 'Круги, главный экран, тема, профиль, данные'],
     ['sync', '🔄', 'Синхронизация', ready() ? (sync.st === 'err' ? 'ошибка: ' + sync.msg : 'подключено · ' + relTime(sync.pulledAt)) : 'не подключено — только этот телефон'],
+    ['note', '🔔', 'Уведомления', PUSH.onHere() ? 'приходят на это устройство' : 'выключены на этом устройстве'],
     ['help', '💡', 'Как этим пользоваться', 'Круги, печать, страховки, обещания'],
   ];
   return header('ещё', 'Меню') + '<div class="menu">' + items.map(([v, e, n, d]) =>
@@ -155,6 +158,16 @@ function vSet() {
     '<div class="card sec"><div class="ch"><h3>Круги</h3><button class="lnk" data-a="cnew">＋ круг</button></div><div style="margin-top:.5rem">' +
     (circles || '<div class="sub">Кругов нет.</div>') + '</div><div class="srow"><button data-a="quick">Добавить набор для старта</button></div></div>' +
 
+    '<div class="card sec"><div class="ch"><h3>Папки кругов</h3><button class="lnk" data-a="gnew2">＋ папка</button></div>' +
+    '<div class="sub" style="margin-top:0">Папка собирает круги в группу на главном экране, её можно свернуть одним нажатием.</div>' +
+    (W.groups.length ? '<div style="margin-top:.5rem">' + W.groups.map(g => {
+      const inside = W.circles.filter(c => c.grp === g.id).length;
+      return '<div class="crow"><div class="ic" style="background:' + esc(g.col) + '1f">' + esc(g.i) + '</div>' +
+        '<div class="cn"><b>' + esc(g.n) + '</b><div>' + (inside ? inside + ' ' + pl(inside, ['круг', 'круга', 'кругов']) : 'пусто') +
+        (g.own === W.me ? '' : ' · ' + esc(W.name(g.own))) + '</div></div>' +
+        '<button class="del" data-a="gedit" data-id="' + esc(g.id) + '" aria-label="Настроить">✎</button></div>';
+    }).join('') + '</div>' : '') + '</div>' +
+
     '<div class="card sec"><h3>Главный экран</h3><div class="sub">Что показывать и в каком порядке. У каждого свой.</div>' +
     '<div class="srow"><button class="k" data-a="dashset">Настроить виджеты</button><button data-a="wkset">Вид недели</button></div></div>' +
 
@@ -210,6 +223,49 @@ function linkBox() {
     'Это как пароль: после подключения сообщение лучше удалить.</div>';
 }
 
+/* ---------------- уведомления ----------------
+   Уведомление приходит на заблокированный телефон, как у любого другого
+   приложения: его присылает телефон пары напрямую через службу доставки
+   (Apple или Google) — своего сервера у нас нет и не нужно. */
+function vNote() {
+  const stop = PUSH.blocker(), here = PUSH.onHere(), mine = PUSH.subsOf(S.push);
+  const yours = PUSH.subsOf(P && P.push);
+  const head = here
+    ? '<div class="okbox">Уведомления включены на этом устройстве. Когда ' + esc(W.name(W.you)) +
+      ' о чём-то ' + W.say(W.you, 'попросит', 'попросит') + ', напомнит или поддержит — придёт уведомление, даже если телефон заблокирован.</div>'
+    : stop ? '<div class="alert"><b>!</b><div>' + esc(stop) + '</div></div>'
+    : '<div class="infobox">Сейчас новое видно, только когда приложение открыто. Включи уведомления — и просьбы будут приходить на экран блокировки.</div>';
+
+  const devs = mine.length
+    ? '<div class="card sec"><h3>Мои устройства</h3>' + mine.map(m =>
+        '<div class="brow"><div class="bl"><span>' + esc(m.ua || 'устройство') + '</span><span class="sub" style="margin:0">' +
+        esc(relTime(m.at)) + '</span></div></div>').join('') +
+      '<div class="sub">Каждое устройство подписывается само: включи уведомления и на планшете, если нужно.</div></div>'
+    : '';
+
+  const pair = W.hasPartner
+    ? '<div class="card sec"><h3>' + esc(W.name(W.you)) + '</h3><div class="sub">' +
+      (yours.length
+        ? 'Уведомления включены: ' + yours.map(s => esc(s.ua || 'устройство')).join(', ') + '. Твои просьбы будут приходить ' + esc(W.dat(W.you)) + ' на телефон.'
+        : esc(W.name(W.you)) + ' ещё не ' + W.say(W.you, 'включил', 'включила') + ' уведомления: открыть «Ещё → Уведомления» и нажать одну кнопку.') + '</div>' +
+      (yours.length ? '<div class="srow"><button data-a="pushping">Отправить проверку ' + esc(W.dat(W.you)) + '</button></div>' : '') + '</div>'
+    : '';
+
+  return header('уведомления', 'На телефон') + back + head +
+    '<div class="card sec"><h3>На этом устройстве</h3>' +
+    (here
+      ? '<div class="srow"><button data-a="pushtest" class="k">Проверить</button><button data-a="pushoff" class="w">Выключить</button></div>'
+      : '<button class="big-btn" data-a="pushon"' + (stop ? ' disabled' : '') + '>Включить уведомления</button>') +
+    '<div class="sub">Телефон спросит разрешение один раз. Ничего лишнего: уведомление приходит только когда ' +
+    esc(W.name(W.you)) + ' что-то ' + W.say(W.you, 'сделал', 'сделала') + ' для тебя.</div></div>' +
+    devs + pair +
+    '<div class="card sec"><h3>Если не приходит</h3><div class="sub">' +
+    '· На айфоне приложение должно быть открыто <b>с рабочего стола</b>, а не из браузера — иначе уведомлений там нет совсем.<br>' +
+    '· В настройках телефона у «Кругов» должны быть разрешены уведомления.<br>' +
+    '· Отправитель должен быть в сети в момент действия: уведомление уходит с его телефона.<br>' +
+    '· Даже без уведомления ничего не теряется — всё придёт во «Входящие» при следующей сверке.</div></div>';
+}
+
 function vSync() {
   const c = getCfg() || {}, key = getKey();
   const owner = c.owner || DEFAULT_CFG.owner, repo = c.repo || DEFAULT_CFG.repo;
@@ -258,6 +314,9 @@ function vSync() {
     '<div class="fld"><label>Репозиторий</label><input type="text" id="grepo" value="' + esc(repo) + '" autocapitalize="off"></div></div></details>' +
     (ready() ? '<div class="srow"><button class="w" data-a="goff">Отключить этот телефон</button></div>' : '') +
     '<div id="gmsg"></div></div>' + keyBox +
+    '<div class="card sec"><h3>🔔 Уведомления на телефон</h3><div class="sub">' +
+    (PUSH.onHere() ? 'Включены на этом устройстве.' : 'Пока выключены: новое видно только в открытом приложении.') +
+    '</div><div class="srow"><button data-a="more" data-v="note">Открыть уведомления</button></div></div>' +
     '<div class="card sec"><h3>Приложение с домашнего экрана</h3><div class="sub">На айфоне оно живёт в своём хранилище, ' +
     'отдельно от Safari: настроенный Safari не делится с иконкой ничем. Поэтому порядок такой — сначала добавить на ' +
     'домашний экран, потом открыть с иконки и один раз вставить сюда ссылку подключения. После этого иконка работает сама по себе.</div></div>' +

@@ -49,10 +49,10 @@ export function vPair() {
   // входящие
   const ib = inbox(W);
   const ibHTML = ib.length ? ib.map(x => {
-    if (x.kind === 'req') return '<div class="inb"><div>📨 ' + esc(x.x.n) + '</div><div class="mini"><span class="tagi">от ' + esc(W.gen(x.x.own)) + '</span>' +
+    if (x.kind === 'req') return '<div class="inb"><div>' + (x.x.kind === 'buy' ? '🛒 ' : '📨 ') + esc(x.x.n) + '</div><div class="mini"><span class="tagi">от ' + esc(W.gen(x.x.own)) + '</span>' +
       (x.x.d ? '<span class="tagi">на ' + esc(inDays(x.x.d)) + '</span>' : '') + (x.x.note ? '<span class="tagi">' + esc(x.x.note) + '</span>' : '') + '</div>' +
-      '<div class="a"><button class="ok" data-a="reqacc" data-id="' + esc(x.x.id) + '" data-v="today">На сегодня</button><button data-a="reqacc" data-id="' + esc(x.x.id) +
-      '" data-v="tom">На завтра</button><button data-a="reqdec" data-id="' + esc(x.x.id) + '">Отклонить</button></div></div>';
+      '<div class="a"><button class="ok" data-a="reqacc" data-id="' + esc(x.x.id) + '">Взять</button>' +
+      '<button data-a="reqdec" data-id="' + esc(x.x.id) + '">Отклонить</button></div></div>';
     if (x.kind === 'ev') return '<div class="inb">' + eventRow(x.x, { rsvp: true }) + '</div>';
     return '<div class="inb"><div>🤝 ' + esc(W.name(x.x.own)) + ' просит обещание: если ' + W.say(x.x.own, 'он', 'она') + ' — ' + esc(pledgeText(W, x.x)) +
       ', ты даришь: <b>' + esc(x.x.reward) + '</b></div><div class="a"><button class="ok" data-a="propacc" data-id="' + esc(x.x.id) + '">Обещаю</button>' +

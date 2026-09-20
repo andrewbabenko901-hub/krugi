@@ -13,10 +13,13 @@ import * as SH from './sheets.js';
 import { F, E, Q, BUILTIN_TPL, planDate, listCircles } from './v_plan.js';
 import { sheetWkSet } from './v_week.js';
 import { sheetDash } from './v_more.js';
+import { WIDGETS } from './v_main.js';
 import { sync, setCfg, getCfg, getKey, setKey, testConnection, cycle, start as startSync, ready,
          DEFAULT_CFG, makeSetupLink, readSetupLink, parseSetupText, clearSetupLink, applySetup, resetSecret } from './sync.js';
 import { newKey, keyLooksValid, cryptoOk } from './crypto.js';
 import { DEFG, DEFS, EMO, PAL } from './parts.js';
+import * as PUSH from './push.js';
+import * as NOTE from './note.js';
 
 let render = () => {};
 export function setRender(fn) { render = fn; }
@@ -32,7 +35,7 @@ export const getPending = () => pendingSetup;
 A.tab = d => {
   closeSheet(); nav.tab = d.v;
   if (d.v === 'more') nav.more = 'menu';               // «Ещё» всегда открывает меню
-  if (d.v === 'pair') { S.seen.feed = now(); saveLocal(); }
+  if (d.v === 'pair') { S.seen.feed = now(); NOTE.markAll(); saveLocal(); }   // открыл «Вместе» — всё увидел
   render(); scrollTo(0, 0); buzz(8);
 };
 A.more = d => { closeSheet(); nav.tab = 'more'; nav.more = d.v; render(); scrollTo(0, 0); buzz(8); };
@@ -155,23 +158,85 @@ A.edel = () => {
 
 /* ---------- настройка круга ---------- */
 A.csetup = d => { SH.newCF(d.id); closeSheet(); openSheet(SH.sheetCircleSetup); };
+/* ---------- эмодзи ---------- */
+A.emoopen = d => {
+  if (d.v === 'circle') readCF(); else readGF();
+  SH.emoSt.on = d.v; SH.emoSt.q = '';
+  openSheet(SH.sheetEmoji, [], true);
+};
+A.emotab = d => { SH.emoSt.tab = +d.v; SH.emoSt.q = ''; refreshSheet(true); };
+A.emoq = (d, el) => { SH.emoSt.q = el.value; refreshSheet(true); const i = document.getElementById('emoq'); if (i) { i.focus(); i.selectionStart = i.value.length; } };
+A.emopick = d => {
+  const e = d.v;
+  const r = (S.ui.recentEmo || []).filter(x => x !== e); r.unshift(e); S.ui.recentEmo = r.slice(0, 24);
+  if (SH.emoSt.on === 'group') { SH.GF.i = e; closeSheet(); openSheet(SH.sheetGroup); }
+  else { SH.CF.i = e; closeSheet(); openSheet(SH.sheetCircleSetup); }
+  changed('ui'); buzz(8);
+};
+A.emoclose = () => {
+  if (SH.emoSt.on === 'group') { closeSheet(); openSheet(SH.sheetGroup); }
+  else { closeSheet(); openSheet(SH.sheetCircleSetup); }
+};
+/* ---------- папки кругов ---------- */
+function readGF() {
+  const g = SH.GF; if (!g) return;
+  if (document.getElementById('gn2')) g.n = val('gn2');
+}
+A.gnew2 = () => { readCF(); SH.newGF(null); closeSheet(); openSheet(SH.sheetGroup); };
+A.gedit = d => { SH.newGF(d.id); closeSheet(); openSheet(SH.sheetGroup); };
+A.gcol = d => { readGF(); SH.GF.col = PAL[+d.v]; refreshSheet(true); };
+A.gvis = d => { readGF(); SH.GF.vis = d.v; refreshSheet(true); };
+A.gsave2 = () => {
+  readGF(); const g = SH.GF;
+  g.n = g.n || 'Папка';
+  const isNew = g._new; delete g._new;
+  const o = put('groups', g);
+  closeSheet();
+  if (isNew && SH.CF) { SH.CF.grp = o.id; openSheet(SH.sheetCircleSetup); }
+  toast(isNew ? 'Папка «' + o.n + '» создана.' : 'Папка обновлена.');
+};
+A.gdel2 = (d, el) => {
+  if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = 'Точно удалить папку?'; return; }
+  const g = W.groupById[SH.GF.id];
+  if (g) { for (const c of W.circles) if (c.grp === g.id) put('circles', { ...c, grp: '' }, true); remove('groups', g); }
+  closeSheet(); toast('Папка удалена, круги остались.');
+};
+A.cgrp = d => { readCF(); SH.CF.grp = d.v; refreshSheet(true); };
+A.cper = d => { readCF(); SH.CF.per = d.v; refreshSheet(true); };
+A.cday = d => {
+  readCF(); const c = SH.CF;
+  c.days = c.days || [1, 1, 1, 1, 1, 1, 1];
+  c.days[+d.v] = c.days[+d.v] ? 0 : 1;
+  if (!c.days.some(Boolean)) c.days[+d.v] = 1;         // хотя бы один день должен остаться
+  refreshSheet(true);
+};
+A.ccolin = (d, el) => { readCF(); SH.CF.col = el.value; refreshSheet(true); };
+A.cfold = d => {                                        // свернуть/развернуть папку на главном
+  const list = S.ui.closed || (S.ui.closed = []);
+  const i = list.indexOf(d.v);
+  if (i < 0) list.push(d.v); else list.splice(i, 1);
+  changed('ui');
+};
 A.cnew = () => { SH.newCF(null); closeSheet(); openSheet(SH.sheetCircleSetup); };
 function readCF() {
-  const CF = SH.CF;
+  const CF = SH.CF; if (!CF) return;
   if (document.getElementById('cn')) CF.n = val('cn');
-  if (document.getElementById('cg')) CF.g = Math.max(1, +val('cg') || 1);
-  if (document.getElementById('cstp')) CF.stp = Math.max(1, +val('cstp') || 1);
-  if (document.getElementById('cper')) CF.per = document.getElementById('cper').value;
+  if (document.getElementById('cg')) CF.g = Math.max(0.01, +val('cg') || 1);
+  if (document.getElementById('cstp')) CF.stp = Math.max(0.01, +val('cstp') || 1);
+  if (document.getElementById('cuf')) { const u = val('cuf'); if (u) CF.u = u; }
+  if (document.getElementById('cnote')) CF.note = val('cnote');
+  if (document.getElementById('ccol')) CF.col = document.getElementById('ccol').value;
 }
 A.ck = d => { readCF(); const CF = SH.CF; CF.k = d.v; if (d.v === 'count') { CF.u = CF.u || 'раз'; CF.g = CF.g > 1 ? CF.g : DEFG[CF.u]; CF.stp = CF.stp || DEFS[CF.u]; } refreshSheet(true); };
 A.cu = d => { readCF(); const CF = SH.CF; CF.u = d.v; CF.g = DEFG[d.v]; CF.stp = DEFS[d.v]; refreshSheet(true); };
-A.cie = d => { readCF(); SH.CF.i = EMO[+d.v]; refreshSheet(true); };
 A.cci = d => { readCF(); SH.CF.col = PAL[+d.v]; refreshSheet(true); };
 A.cvis = d => { readCF(); SH.CF.vis = d.v; refreshSheet(true); };
 A.coff = d => { readCF(); SH.CF.off = +d.v; refreshSheet(true); };
 A.csave = () => {
   readCF(); const CF = SH.CF;
   CF.n = CF.n || 'Без названия';
+  if (CF.k === 'count') { CF.u = CF.u || 'раз'; CF.per = CF.per || 'day'; }
+  if (CF.days && CF.days.every(Boolean)) delete CF.days;
   const isNew = CF._new; delete CF._new;
   const o = put('circles', CF);
   if (isNew && !S.ui.corder.includes(o.id)) S.ui.corder.push(o.id);
@@ -203,6 +268,17 @@ A.dens = d => { S.ui.dens = d.v; changed('ui'); };
 
 /* ---------- главный экран ---------- */
 A.dashset = () => { closeSheet(); openSheet(sheetDash, [], true); };
+A.dedit = () => {
+  nav.edit = !nav.edit;
+  if (!nav.edit) toast('Главный экран сохранён.');
+  render(); buzz(8); scrollTo(0, 0);
+};
+A.wside = d => {
+  const x = S.ui.dash.find(y => y.id === d.v); if (!x) return;
+  const cur = typeof x.side === 'number' ? !!x.side : !!WIDGETS[d.v].side;
+  x.side = cur ? 0 : 1;
+  changed('ui'); render();
+};
 A.dtog = d => { const x = S.ui.dash.find(y => y.id === d.v); if (x) x.on = !x.on; changed('ui'); };
 A.dup = d => { const i = +d.v, a = S.ui.dash; if (i > 0) { [a[i - 1], a[i]] = [a[i], a[i - 1]]; changed('ui'); } };
 A.ddown = d => { const i = +d.v, a = S.ui.dash; if (i < a.length - 1) { [a[i + 1], a[i]] = [a[i], a[i + 1]]; changed('ui'); } };
@@ -236,14 +312,18 @@ A.eadd = () => {
   if (!E.t) { toast('Напиши, что за план.'); return; }
   put('events', { t: E.t, kind: E.kind, date: planDate(), time: E.time, place: E.place, with: E.with, note: E.note,
                   vis: E.with === 'us' ? 'shared' : E.vis });
+  if (E.with === 'us') PUSH.notifyPartner('📍 ' + W.name(W.me) + ' зовёт', E.t + ' · ' + pln(planDate()) + (E.time ? ', ' + E.time : ''), 'pair');
   toast(E.with === 'us' ? W.name(W.you) + ' увидит приглашение.' : 'Запланировано.');
   Object.assign(E, { t: '', time: '', place: '', note: '' }); render(); buzz(12);
 };
+A.qkind = d => { Q.kind = d.v; render(); };
 A.qadd = () => {
   Q.n = val('qn'); Q.note = val('qnote');
   if (!Q.n) { toast('О чём просишь?'); return; }
-  put('requests', { to: W.you, n: Q.n, note: Q.note, d: planDate(), vis: 'shared' });
-  toast('Просьба отправлена. ' + W.name(W.you) + ' увидит её во «Входящих».');
+  put('requests', { to: W.you, n: Q.n, note: Q.note, kind: Q.kind, d: planDate(), vis: 'shared' });
+  PUSH.notifyPartner(Q.kind === 'buy' ? '🛒 ' + W.name(W.me) + ' просит купить' : '📨 Просьба от ' + W.gen(W.me),
+                     Q.n + (Q.note ? ' · ' + Q.note : ''), 'pair');
+  toast('Просьба отправлена' + (PUSH.partnerOn() ? ' — уведомление ушло.' : '. ' + W.name(W.you) + ' увидит её во «Входящих».'));
   Object.assign(Q, { n: '', note: '' }); render(); buzz(12);
 };
 A.qdel = d => { const r = W.requests.find(x => x.id === d.id); if (r) remove('requests', r); toast('Просьба отозвана.'); };
@@ -279,13 +359,70 @@ function circleForRequest() {
     put('circles', { n: 'Просьбы', i: '📨', col: '#2F5BD0', k: 'list', vis: 'pair', per: 'day' });
 }
 A.reqacc = d => {
-  const r = W.requests.find(x => x.id === d.id); if (!r) return;
-  const c = circleForRequest(), day = d.v === 'today' ? W.today : addK(W.today, 1);
-  const t = put('tasks', { c: c.id, n: r.n, q: r.note || '', w: W.me, r: null, d: day, by: r.own, req: r.id, pr: 0, st: '', prv: 0 }, true);
-  setMap('answers', r.id, { s: 'acc', task: t.id });
-  buzz(14); toast((d.v === 'today' ? 'Взято на сегодня' : 'Встало на завтра') + ' в «' + c.n + '».');
+  NOTE.markSeen();
+  SH.newRF(d.id);
+  if (!SH.RF) { toast('Просьбы уже нет.'); render(); return; }
+  closeSheet(); openSheet(SH.sheetTakeReq, [], true);
 };
-A.reqdec = d => { setMap('answers', d.id, { s: 'dec' }); buzz(8); toast('Отклонено. ' + W.name(W.you) + ' увидит отказ.'); };
+A.rfc = d => { if (SH.RF) { SH.RF.c = d.v; refreshSheet(true); } };
+A.rfd = d => { if (SH.RF) { SH.RF.d = d.v; refreshSheet(true); } };
+A.reqtake = () => {
+  const F = SH.RF; if (!F) return;
+  const c = W.circleById[F.c] || circleForRequest();
+  const t = put('tasks', { c: c.id, n: F.r.n, q: F.r.note || '', w: W.me, r: null, d: F.d,
+                           by: F.r.own, req: F.r.id, pr: 0, st: '', prv: 0 }, true);
+  setMap('answers', F.r.id, { s: 'acc', task: t.id, c: c.id });
+  const when = F.d === W.today ? 'на сегодня' : F.d === addK(W.today, 1) ? 'на завтра' : 'на ' + pln(F.d);
+  PUSH.notifyPartner('👍 ' + W.name(W.me) + ' ' + W.say(W.me, 'взял', 'взяла'), F.r.n + ' · ' + c.n + ', ' + when, 'pair');
+  closeSheet(); buzz(14); toast('Взято в «' + c.n + '» ' + when + '.');
+};
+A.reqdec2 = () => {
+  if (!SH.RF) return;
+  setMap('answers', SH.RF.r.id, { s: 'dec' });
+  PUSH.notifyPartner('🙅 ' + W.name(W.me) + ' ' + W.say(W.me, 'отказался', 'отказалась'), SH.RF.r.n, 'pair');
+  closeSheet(); buzz(8); toast('Отклонено.');
+};
+A.reqdec = d => {
+  const r = W.requests.find(x => x.id === d.id);
+  NOTE.markSeen(); setMap('answers', d.id, { s: 'dec' }); buzz(8);
+  PUSH.notifyPartner('🙅 ' + W.name(W.me) + ' ' + W.say(W.me, 'отказался', 'отказалась'), (r && r.n) || 'просьба', 'pair');
+  toast('Отклонено. ' + W.name(W.you) + ' увидит отказ.');
+};
+
+/* ---------- полоска «пришло от пары» ---------- */
+A.notego = () => {
+  const n = NOTE.cur; if (!n) return;
+  NOTE.markSeen();
+  if (n.a === 'reqacc') A.reqacc({ id: n.id });
+  else { nav.tab = n.v || 'pair'; nav.more = 'menu'; render(); }
+};
+A.notex = () => { NOTE.markSeen(); render(); };
+
+/* ---------- уведомления на телефон ---------- */
+A.pushon = async (d, el) => {
+  const t = el.textContent;
+  el.textContent = 'Спрашиваю разрешение…'; el.disabled = true;
+  try {
+    await PUSH.enable();
+    toast('Уведомления включены на этом устройстве.');
+    const r = await PUSH.selfTest();
+    if (!r.ok) toast('Включено, но проверка не дошла: ' + r.msg);
+  } catch (e) { toast(e.message || String(e)); }
+  el.disabled = false; el.textContent = t; render(); refreshSheet(true);
+};
+A.pushoff = async () => { await PUSH.disable(); toast('Уведомления на этом устройстве выключены.'); render(); };
+A.pushtest = async (d, el) => {
+  el.disabled = true;
+  const r = await PUSH.selfTest();
+  toast(r.ok ? 'Отправлено — уведомление должно прийти через пару секунд.' : 'Не дошло: ' + r.msg);
+  el.disabled = false;
+};
+A.pushping = async (d, el) => {
+  el.disabled = true;
+  const ok = await PUSH.notifyPartner('🔔 ' + W.name(W.me), 'Проверка связи. Всё доходит.', 'pair');
+  toast(ok ? 'Ушло ' + W.dat(W.you) + '.' : 'Не ушло: у ' + W.gen(W.you) + ' уведомления не включены.');
+  el.disabled = false;
+};
 A.propacc = d => {
   const p = W.pledges.find(x => x.id === d.id); if (!p) return;
   put('pledges', { ...p, st: 'active' }); setMap('answers', p.id, { s: 'acc' });
@@ -300,6 +437,7 @@ A.rsvp = d => {
 A.kudos = (d, el) => {
   if (!W.hasPartner) { toast('Поддержка дойдёт, когда подключите синхронизацию.'); }
   put('kudos', { to: W.you, e: d.v, about: el.dataset.about || '', vis: 'shared' });
+  PUSH.notifyPartner(d.v + ' от ' + W.gen(W.me), el.dataset.about ? 'за: ' + el.dataset.about : 'просто так', 'pair');
   buzz([8, 30, 8]); toast(d.v + ' ' + W.name(W.you) + ' увидит.');
 };
 A.poke = d => {
@@ -307,6 +445,7 @@ A.poke = d => {
   const today = W.today;
   if (W.pokes.some(p => p.own === W.me && p.ref === t.id && p.day === today)) { toast('Сегодня уже напоминал' + W.say(W.me, '', 'а') + '. Дальше это уже нытьё.'); return; }
   put('pokes', { to: W.you, ref: t.id, about: t.n, day: today, vis: 'shared' });
+  PUSH.notifyPartner('🔔 ' + W.name(W.me) + ' напоминает', t.n, 'today');
   toast('Напоминание отправлено.'); buzz(10);
 };
 A.ptab = d => { nav.pledgeTab = d.v; render(); };
@@ -334,6 +473,7 @@ A.pfsave = () => {
               st: P.id ? P.st : (give ? 'active' : 'proposed') };
   delete o.dir;
   put('pledges', o); closeSheet(); buzz(14);
+  PUSH.notifyPartner(give ? '🤝 ' + W.name(W.me) + ' обещает' : '🤝 Предложение от ' + W.gen(W.me), o.reward || 'сюрприз', 'pair');
   toast(P.id ? 'Сохранено.' : give ? 'Обещано. ' + W.name(W.you) + ' увидит прогресс.' : 'Предложение отправлено ' + W.dat(W.you) + '.');
 };
 A.pfcancel = (d, el) => {
@@ -546,12 +686,6 @@ A.keyreset = (d, el) => {
   resetSecret(); toast('Личное начато заново.'); render();
 };
 
-A.gtest = async () => {
-  const c = formCfg(); if (!c.owner || !c.token) { gmsg('<div class="alert"><b>!</b><div>Нужны логин и токен.</div></div>'); return; }
-  gmsg('<div class="sub">Проверяю…</div>');
-  const r = await testConnection(c);
-  gmsg(r.ok ? '<div class="' + (r.warn ? 'alert' : 'okbox') + '">' + (r.warn || r.msg) + '</div>' : '<div class="alert"><b>!</b><div>' + r.msg + '</div></div>');
-};
 A.gsave = async () => {
   const c = formCfg(); if (!c.owner || !c.token) { gmsg('<div class="alert"><b>!</b><div>Нужны логин и токен.</div></div>'); return; }
   gmsg('<div class="sub">Проверяю…</div>');
@@ -569,11 +703,6 @@ A.goff = () => {
 A.keyshow = () => { const e = document.getElementById('keyshow'); if (e) e.textContent = getKey(); };
 A.keycopy = async () => { try { await navigator.clipboard.writeText(getKey()); toast('Ключ скопирован. Храни его как пароль.'); } catch { A.keyshow(); toast('Скопируй ключ вручную.'); } };
 A.keynew = () => { setKey(newKey()); render(); toast('Ключ создан. Перенеси его на второй свой телефон, если он есть.'); if (ready()) cycle('push'); };
-A.keyset = () => {
-  const k = val('keyin');
-  if (!keyLooksValid(k)) { toast('Это не похоже на ключ.'); return; }
-  setKey(k); sync.needKey = false; toast('Ключ установлен.'); if (ready()) cycle('pull'); render();
-};
 
 /* ---------- первый запуск ---------- */
 A.hello = d => { loadState(d.v); rebuild(); startSync(); render(); };

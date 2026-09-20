@@ -2,12 +2,12 @@
 import { esc, pln, DN, human, parse, addK, money, inDays } from './util.js';
 import { W, nav } from './ctx.js';
 import { pick, BIN_ICON } from './ui.js';
-import { whoTag, eventRow, EVENT_KINDS, header } from './parts.js';
+import { whoTag, eventRow, EVENT_KINDS, header, circleLabel } from './parts.js';
 
 /* Черновики форм живут между перерисовками: пишешь, жмёшь чип — текст на месте. */
 export const F = { n: '', c: null, w: null, q: '', pr: '', st: '', prv: 0, days: [0, 0, 0, 0, 0, 0, 0] };
 export const E = { t: '', kind: 'walk', time: '', place: '', with: 'us', note: '', vis: 'pair', date: '' };
-export const Q = { n: '', note: '' };
+export const Q = { n: '', note: '', kind: 'task' };
 export function bind(path, v) {
   const [o, k] = path.split('.');
   ({ F, E, Q })[o][k] = v;
@@ -57,7 +57,7 @@ export function vPlan() {
       if (!F.w) F.w = W.me;
       form = '<div class="card sec"><h3>Новое дело</h3>' +
         '<div class="fld"><label>Что сделать</label><input type="text" id="fn" data-bind="F.n" value="' + esc(F.n) + '" placeholder="Забрать бельё из химчистки"></div>' +
-        '<div class="fld"><label>Круг</label>' + pick('fc', F.c, lc.map(c => [c.id, c.i + ' ' + c.n])) + '</div>' +
+        '<div class="fld"><label>Круг</label>' + pick('fc', F.c, lc.map(c => [c.id, circleLabel(c)])) + '</div>' +
         (c0 && c0._shared ? '<div class="fld"><label>Кто делает</label>' + pick('fw', F.w, [[W.me, 'я'], [W.you, W.name(W.you)], ['both', 'оба']]) + '</div>' : '') +
         (c0 && c0.vis !== 'prv' ? '<div class="fld"><label>Видимость</label>' + pick('fprv', F.prv, [[0, 'как у круга'], [1, '🔒 только я']]) + '</div>' : '') +
         '<div class="fld"><label>Повтор по дням (пусто — разово)</label><div class="days">' + DN.map((d, i) =>
@@ -83,10 +83,14 @@ export function vPlan() {
   } else {
     const sent = W.requests.filter(r => r.own === W.me).sort((a, b) => (b.cr || 0) - (a.cr || 0)).slice(0, 6);
     form = '<div class="card sec"><h3>Попросить ' + esc(W.acc(W.you)) + '</h3><div class="sub" style="margin-top:0">Просьба не встаёт в чужой список молча: ' +
-      esc(W.name(W.you)) + ' увидит её во «Входящих» и решит — на сегодня, на завтра или нет.</div>' +
-      '<div class="fld"><label>О чём просишь</label><input type="text" id="qn" data-bind="Q.n" value="' + esc(Q.n) + '" placeholder="Забрать посылку с почты"></div>' +
+      esc(W.name(W.you)) + ' ' + W.say(W.you, 'сам', 'сама') + ' решит, брать ли, в какой круг положить и на какой день.</div>' +
+      '<div class="fld"><label>Что это</label>' + pick('qkind', Q.kind, [['task', '📋 дело'], ['buy', '🛒 купить']]) + '</div>' +
+      '<div class="fld"><label>' + (Q.kind === 'buy' ? 'Что купить' : 'О чём просишь') + '</label><input type="text" id="qn" data-bind="Q.n" value="' + esc(Q.n) +
+      '" placeholder="' + (Q.kind === 'buy' ? 'Молоко, 2 штуки' : 'Забрать посылку с почты') + '"></div>' +
       '<div class="fld"><label>Уточнение</label><input type="text" id="qnote" data-bind="Q.note" value="' + esc(Q.note) + '" placeholder="номер 2045, до 18:00"></div>' +
-      '<button class="big-btn" data-a="qadd">Отправить просьбу на ' + esc(inDays(tk)) + '</button>' +
+      '<button class="big-btn" data-a="qadd">' + (Q.kind === 'buy' ? 'Попросить купить' : 'Отправить просьбу') + ' на ' + esc(inDays(tk)) + '</button>' +
+      '<div class="sub">Придёт уведомлением. ' + esc(W.name(W.you)) + ' нажмёт «Взять» и выберет, в какой круг это положить' +
+      (Q.kind === 'buy' ? ' — покупки предложатся сами' : '') + '.</div>' +
       (sent.length ? '<div class="sec"><h3>Отправленные</h3>' + sent.map(r => {
         const a = W.answersYou[r.id];
         return '<div class="shoprow"><span class="nm2">' + esc(r.n) + '<span class="mini"><span class="tagi' + (a ? (a.s === 'acc' ? ' g' : ' w') : '') + '">' +

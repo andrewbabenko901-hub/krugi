@@ -75,6 +75,8 @@ export function buildWorld(S, P) {
     c.per = c.per || 'day';
   }
   W.circles.sort((a, b) => pos(a.id) - pos(b.id) || (a.cr || 0) - (b.cr || 0));
+  W.groups = W.groups.filter(g => g.own === me || g.vis !== 'prv');
+  W.groupById = Object.fromEntries(W.groups.map(g => [g.id, g]));
   W.myCircles = W.circles.filter(c => c._mine || c._shared);          // сетка на главном
   W.yourCircles = W.circles.filter(c => c.own === you && !c._shared);  // «видно паре» у пары
   W.circleById = Object.fromEntries(W.circles.map(c => [c.id, c]));
@@ -104,8 +106,12 @@ export function buildWorld(S, P) {
   W.cnote = (c, k) => { const e = W.counts[c.id] && W.counts[c.id][k]; return (e && e.note) || ''; };
   W.cweek = (c, k) => { const a = wkStartK(k); let s = 0; for (let i = 0; i < 7; i++) s += W.cval(c, addK(a, i)); return s; };
 
+  /** Работает ли круг в этот день: у круга можно задать дни недели. */
+  W.active = (c, k) => !c.off && (!c.days || !c.days.length || c.days[di(parse(k))]);
+
   /** Прогресс круга: p от 0 до 1, d/a для папок, empty — если на день ничего нет. */
   W.prog = (c, k) => {
+    if (!W.active(c, k)) return { p: 0, d: 0, a: 0, empty: true, off: true };
     if (c.k === 'count') {
       const v = c.per === 'week' ? W.cweek(c, k) : W.cval(c, k);
       return { p: Math.min(1, v / (c.g || 1)), v, g: c.g || 1, empty: false };
@@ -124,7 +130,7 @@ export function buildWorld(S, P) {
     }
     let a = 0, d = 0;
     for (const c of W.myCircles) {
-      if (c.off) continue;
+      if (!W.active(c, k)) continue;
       if (c.k === 'count' || c.k === 'mood') {
         if (c.per === 'week') continue;                 // недельная цель — не про день
         if (!c._mine && !c._shared) continue;
@@ -378,7 +384,9 @@ export function feed(W) {
   const nm = W.name(you), sv = (m, f) => W.say(you, m, f);
   for (const k of W.kudos) if (k.to === me) out.push({ at: k.upd, e: k.e || '❤️', t: nm + ': ' + (k.e || '❤️') + (k.about ? ' — ' + k.about : ''), kind: 'kudos' });
   for (const k of W.pokes) if (k.to === me) out.push({ at: k.upd, e: '🔔', t: nm + ' напоминает: ' + (k.about || 'дело'), kind: 'poke' });
-  for (const r of W.requests) if (r.to === me && r.own === you) out.push({ at: r.cr || r.upd, e: '📨', t: nm + ' просит: ' + r.n, kind: 'req' });
+  for (const r of W.requests) if (r.to === me && r.own === you)
+    out.push({ at: r.cr || r.upd, e: r.kind === 'buy' ? '🛍' : '📨',
+               t: nm + (r.kind === 'buy' ? ' просит купить: ' : ' просит: ') + r.n, kind: 'req' });
   for (const p of W.pledges) if (p.giver === you && p.to === me && p.st !== 'proposed') out.push({ at: p.cr || p.upd, e: '🤝', t: nm + ' обещает: ' + (p.reward || 'сюрприз'), kind: 'pledge' });
   for (const e of W.events) if (e.own === you && e.with === 'us') out.push({ at: e.cr || e.upd, e: '📍', t: nm + ' зовёт: ' + e.t, kind: 'event' });
   for (const w of W.wishes) if (w.own === you && !w.sur && w.for !== me) out.push({ at: w.cr || w.upd, e: '🛍', t: nm + ' ' + sv('добавил', 'добавила') + ' в покупки: ' + w.t, kind: 'wish' });

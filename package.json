@@ -1,0 +1,6 @@
+{
+  "name": "krugi",
+  "private": true,
+  "type": "module",
+  "description": "Круги — ежедневка на двоих. Сборки нет: файлы отдаются как есть. package.json нужен только для проверок в node."
+}

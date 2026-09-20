@@ -76,10 +76,10 @@ R.inbox = () => {
   const ib = inbox(W);
   if (!ib.length) return '';
   const it = ib.slice(0, 2).map(x => {
-    if (x.kind === 'req') return '<div class="inb"><div>📨 ' + esc(x.x.n) + '</div><div class="mini"><span class="tagi">от ' + esc(W.gen(x.x.own)) +
+    if (x.kind === 'req') return '<div class="inb"><div>' + (x.x.kind === 'buy' ? '🛒 ' : '📨 ') + esc(x.x.n) + '</div><div class="mini"><span class="tagi">от ' + esc(W.gen(x.x.own)) +
       '</span>' + (x.x.d ? '<span class="tagi">' + esc(inDays(x.x.d)) + '</span>' : '') + (x.x.note ? '<span class="tagi">' + esc(x.x.note) + '</span>' : '') + '</div>' +
-      '<div class="a"><button class="ok" data-a="reqacc" data-id="' + esc(x.x.id) + '" data-v="today">На сегодня</button><button data-a="reqacc" data-id="' + esc(x.x.id) +
-      '" data-v="tom">На завтра</button><button data-a="reqdec" data-id="' + esc(x.x.id) + '">Нет</button></div></div>';
+      '<div class="a"><button class="ok" data-a="reqacc" data-id="' + esc(x.x.id) + '">Взять</button>' +
+      '<button data-a="reqdec" data-id="' + esc(x.x.id) + '">Нет</button></div></div>';
     if (x.kind === 'ev') return '<div class="inb">' + eventRow(x.x, { rsvp: true }) + '</div>';
     return '<div class="inb"><div>🤝 ' + esc(W.name(x.x.own)) + ' ' + W.say(x.x.own, 'предлагает', 'предлагает') + ' обещание: ' + esc(pledgeText(W, x.x)) +
       ' → ' + esc(x.x.reward) + '</div><div class="a"><button class="ok" data-a="propacc" data-id="' + esc(x.x.id) + '">Обещаю</button><button data-a="propdec" data-id="' +
@@ -90,12 +90,31 @@ R.inbox = () => {
 };
 
 R.circles = () => {
-  const k = nav.VD, list = W.myCircles;
-  if (!list.length) return '<div class="card sec"><h3>Кругов пока нет</h3><div class="sub">Круг — это папка дел, счётчик (шаги, вода, задачи по работе), список покупок или настроение. Создай первый.</div>' +
+  const k = nav.VD, list = W.myCircles.filter(c => W.active(c, k) || c.off);
+  if (!W.myCircles.length) return '<div class="card sec"><h3>Кругов пока нет</h3><div class="sub">Круг — это папка дел, счётчик (шаги, вода, задачи по работе), список покупок или настроение. Создай первый.</div>' +
     '<button class="big-btn" data-a="cnew">Создать круг</button><button class="big-btn alt" data-a="quick">Или набор для старта</button></div>';
   const cols = S.ui.cols ? 'repeat(' + S.ui.cols + ',1fr)' : 'repeat(auto-fill,minmax(6.4rem,1fr))';
-  return '<div class="grid sec" style="grid-template-columns:' + cols + '">' + list.map(c => cellHTML(c, k)).join('') +
-    '<button class="addc" data-a="cnew">+ новый круг</button></div>';
+  const grid = arr => '<div class="grid" style="grid-template-columns:' + cols + '">' + arr.map(c => cellHTML(c, k)).join('') + '</div>';
+  const closed = S.ui.closed || [];
+  const used = new Set();
+  let out = '';
+  for (const g of W.groups) {
+    const inside = list.filter(c => c.grp === g.id);
+    if (!inside.length) continue;
+    inside.forEach(c => used.add(c.id));
+    const shut = closed.includes(g.id);
+    const done = inside.filter(c => W.cdone(c, k)).length;
+    out += '<div class="sec"><button class="grp" data-a="cfold" data-v="' + esc(g.id) + '">' +
+      '<span class="gi" style="background:' + esc(g.col) + '22">' + esc(g.i) + '</span>' +
+      '<b>' + esc(g.n) + '</b><span class="cnt2">' + done + '/' + inside.length + '</span>' +
+      '<span class="arr2">' + (shut ? '▾' : '▴') + '</span></button>' +
+      (shut ? '' : grid(inside)) + '</div>';
+  }
+  const rest = list.filter(c => !used.has(c.id));
+  out += '<div class="sec">' + (W.groups.length && rest.length ? '<div class="wkg" style="padding-left:0">Без папки</div>' : '') +
+    '<div class="grid" style="grid-template-columns:' + cols + '">' + rest.map(c => cellHTML(c, k)).join('') +
+    '<button class="addc" data-a="cnew">+ новый круг</button></div></div>';
+  return out;
 };
 
 R.quick = () => {
@@ -234,13 +253,43 @@ export function vToday() {
   const hd = '<div class="hd"><div><div class="dt">' + esc(human(parse(k))).toUpperCase() + (isT ? ' · СЕГОДНЯ' : fut ? ' · ВПЕРЁД' : ' · ПРОШЛОЕ') + '</div>' +
     '<h1>' + (isT ? 'Привет, ' + esc(W.name(W.me)) : 'Круги дня') + '</h1></div><div class="rowbtns">' + syncPill(sync) +
     (isT ? '' : '<button class="ghost" data-a="day" data-v="' + W.today + '">сегодня</button>') +
-    '<button class="ghost" data-a="dashset">вид</button></div></div>';
+    '<button class="ghost' + (nav.edit ? ' on' : '') + '" data-a="dedit">' + (nav.edit ? '✓ готово' : 'вид') + '</button></div></div>';
   const on = S.ui.dash.filter(x => x.on && WIDGETS[x.id]);
   const html = id => { try { return R[id] ? R[id]() : ''; } catch (e) { console.error(id, e); return ''; } };
+  if (nav.edit) return hd + editBoard();
   if (nav.wide) {
-    const main = on.filter(x => !WIDGETS[x.id].side).map(x => html(x.id)).join('');
-    const side = on.filter(x => WIDGETS[x.id].side).map(x => html(x.id)).join('');
-    return hd + '<div class="two-col"><div>' + main + '</div><div class="side" style="margin-top:1.1rem">' + side + '</div></div>';
+    const main = on.filter(x => !side(x)).map(x => html(x.id)).join('');
+    const sd = on.filter(x => side(x)).map(x => html(x.id)).join('');
+    return hd + '<div class="two-col"><div>' + main + '</div><div class="side" style="margin-top:1.1rem">' + sd + '</div></div>';
   }
   return hd + on.map(x => html(x.id)).join('');
+}
+
+/* Где виджет живёт на широком экране: своё решение человека важнее умолчания. */
+const side = x => (typeof x.side === 'number' ? !!x.side : !!WIDGETS[x.id].side);
+
+/* ---------------- правка главного экрана ----------------
+   Виджет берётся за полоску сверху и таскается пальцем; порядок
+   запоминается сразу. Здесь только разметка, само перетаскивание — в app.js. */
+function editBoard() {
+  const d = S.ui.dash.filter(x => WIDGETS[x.id]);
+  const shown = d.filter(x => x.on), hidden = d.filter(x => !x.on);
+  const card = x => {
+    const w = WIDGETS[x.id];
+    let inner = '';
+    try { inner = R[x.id] ? R[x.id]() : ''; } catch { inner = ''; }
+    return '<div class="wrapw" data-w="' + esc(x.id) + '">' +
+      '<div class="wbar"><span class="wh" aria-hidden="true">⠿</span><b>' + esc(w.t) + '</b>' +
+      (nav.wide ? '<button class="ghost' + (side(x) ? ' on' : '') + '" data-a="wside" data-v="' + esc(x.id) + '">' +
+        (side(x) ? 'справа' : 'слева') + '</button>' : '') +
+      '<button class="ghost" data-a="dtog" data-v="' + esc(x.id) + '">убрать</button></div>' +
+      '<div class="wbody">' + inner + '</div></div>';
+  };
+  return '<div class="infobox">Возьми виджет за полоску сверху и перетащи, куда нужно. Порядок запомнится сам.</div>' +
+    '<div id="board">' + shown.map(card).join('') + '</div>' +
+    (hidden.length ? '<div class="card sec"><h3>Убранное</h3><div class="sub">Нажми, чтобы вернуть на экран.</div>' +
+      '<div class="pick" style="margin-top:.6rem">' + hidden.map(x =>
+        '<button class="pb" data-a="dtog" data-v="' + esc(x.id) + '">＋ ' + esc(WIDGETS[x.id].t) + '</button>').join('') + '</div></div>' : '') +
+    '<div class="card sec"><h3>Ещё про вид</h3>' +
+    '<div class="srow"><button data-a="dashset">Список и плотность</button><button data-a="dreset">Вернуть как было</button></div></div>';
 }

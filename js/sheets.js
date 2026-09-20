@@ -3,8 +3,9 @@ import { esc, fmt, DN, human, parse, addK, wkStartK, money, domainOf, inDays, sh
 import { W, nav } from './ctx.js';
 import { S } from './store.js';
 import { ring, pick, chk } from './ui.js';
-import { taskLi, circleSub, MOODS, UNITS, EMO, PAL, EVENT_KINDS, VIS, whoTag } from './parts.js';
+import { taskLi, circleSub, circleLabel, MOODS, UNITS, EMO, PAL, EVENT_KINDS, VIS, whoTag } from './parts.js';
 import { PLEDGE_TYPES } from './model.js';
+import { EMOJI, EMOJI_KEYS } from './emoji.js';
 
 /* ---------- круг ---------- */
 export const CS = { gw: null, prv: 0 };       // черновик: кто делает и личное ли новое дело
@@ -107,33 +108,150 @@ export function sheetTask(t) {
     '<div class="sub">Регулярное дело при удалении уходит только из будущих дней — история остаётся как была.</div>';
 }
 
+/* ---------- выбор эмодзи ----------
+   Полный набор по разделам плюс поиск по русским словам и недавние. */
+export const emoSt = { tab: 0, q: '', on: null };   // on: что настраиваем — 'circle' | 'group'
+export function sheetEmoji() {
+  const q = emoSt.q.trim().toLowerCase();
+  let list = null, title = '';
+  if (q) {
+    const hit = new Set();
+    for (const key in EMOJI_KEYS) if (key.startsWith(q) || q.startsWith(key)) for (const e of EMOJI_KEYS[key]) hit.add(e);
+    list = [...hit]; title = 'найдено по слову «' + esc(q) + '»';
+    if (!list.length) { list = null; title = ''; }
+  }
+  const recent = (S.ui.recentEmo || []).slice(0, 16);
+  const cat = EMOJI[emoSt.tab] || EMOJI[0];
+  const grid = arr => '<div class="emos big">' + arr.map(e =>
+    '<button data-a="emopick" data-v="' + esc(e) + '">' + e + '</button>').join('') + '</div>';
+  return '<div class="sn">Иконка</div>' +
+    '<div class="fld"><input type="text" id="emoq" value="' + esc(emoSt.q) + '" placeholder="поиск: дом, еда, спорт, шаги…" ' +
+    'data-a="emoq" data-live="1" autocapitalize="off"></div>' +
+    (list ? '<div class="sub">' + title + '</div>' + grid(list) : '') +
+    (!q && recent.length ? '<div class="sub">Недавние</div>' + grid(recent) : '') +
+    '<div class="boards" style="margin-top:.6rem">' + EMOJI.map((c, i) =>
+      '<button class="pb" data-a="emotab" data-v="' + i + '" aria-pressed="' + (i === emoSt.tab) + '">' + c[0] + ' ' + esc(c[1]) + '</button>').join('') + '</div>' +
+    grid(cat[2]) +
+    '<div class="srow"><button data-a="emoclose" class="k">Готово</button></div>';
+}
+
+/* ---------- папка кругов ---------- */
+export let GF = null;
+export function newGF(id) {
+  const g = id ? W.groupById[id] : null;
+  GF = g ? JSON.parse(JSON.stringify(g)) : { n: '', i: '📂', col: PAL[0], vis: 'pair' };
+  GF._new = !g;
+}
+export function sheetGroup() {
+  const g = GF, inside = W.circles.filter(c => c.grp === g.id);
+  return '<div class="sn">' + (g._new ? 'Новая папка' : 'Папка кругов') + '</div>' +
+    '<div class="sub" style="margin-top:0">Папка собирает круги в одну группу на главном экране: «Дом», «Работа», «Здоровье».</div>' +
+    '<div class="fld"><label>Название</label><input type="text" id="gn2" value="' + esc(g.n) + '" placeholder="Здоровье"></div>' +
+    '<div class="fld"><label>Иконка</label><button class="big-btn alt" data-a="emoopen" data-v="group">' + esc(g.i) + '  выбрать</button></div>' +
+    '<div class="fld"><label>Цвет</label><div class="cols8">' + PAL.map((p, i) =>
+      '<button data-a="gcol" data-v="' + i + '" style="background:' + p + '" aria-pressed="' + (g.col === p) + '" aria-label="' + p + '"></button>').join('') + '</div></div>' +
+    '<div class="fld"><label>Кто видит</label>' + pick('gvis', g.vis, VIS) + '</div>' +
+    (inside.length ? '<div class="sub">Внутри: ' + inside.map(c => esc(c.i + ' ' + c.n)).join(', ') + '</div>' : '') +
+    '<div class="srow"><button data-a="gsave2" class="k">Сохранить</button>' +
+    (g._new ? '' : '<button data-a="gdel2" class="w">Удалить папку</button>') + '</div>' +
+    '<div class="srow"><button data-a="close">Отмена</button></div>';
+}
+
 /* ---------- настройка круга ---------- */
 export let CF = null;
 export function newCF(cid) {
   const c = cid ? W.circleById[cid] : null;
-  CF = c ? JSON.parse(JSON.stringify(c)) : { n: '', i: '✨', col: PAL[0], k: 'list', vis: 'pair', u: 'раз', g: 1, stp: 1, per: 'day' };
+  CF = c ? JSON.parse(JSON.stringify(c))
+         : { n: '', i: '✨', col: PAL[S.data.circles.length % PAL.length], k: 'list', vis: 'pair',
+             u: 'раз', g: 1, stp: 1, per: 'day', grp: '', note: '' };
   CF._new = !c;
 }
 export function sheetCircleSetup() {
-  const c = CF;
-  return '<div class="shead"><div style="width:3.6rem;height:3.6rem;border-radius:1rem;background:' + esc(c.col) + '22;display:grid;place-items:center;font-size:1.6rem">' + esc(c.i) + '</div>' +
-    '<div><div class="sn">' + (c._new ? 'Новый круг' : 'Настройка круга') + '</div><div class="ss">' + (c._new ? '' : esc(circleSub(c))) + '</div></div></div>' +
+  const c = CF, cnt = c.k === 'count';
+  const days = c.days || [1, 1, 1, 1, 1, 1, 1];
+  const units = ['раз', 'шагов', 'мл', 'мин', 'ч', 'стр', 'км', 'задач', 'ккал', 'подходов', 'страниц', 'рублей'];
+  return '<div class="shead"><div style="width:3.6rem;height:3.6rem;border-radius:1rem;background:' + esc(c.col) +
+    '22;display:grid;place-items:center;font-size:1.8rem">' + esc(c.i) + '</div>' +
+    '<div><div class="sn">' + (c._new ? 'Новый круг' : esc(c.n || 'Круг')) + '</div><div class="ss">' +
+    (c._new ? 'что это будет' : esc(circleSub(c))) + '</div></div></div>' +
+
     '<div class="fld"><label>Название</label><input type="text" id="cn" value="' + esc(c.n) + '" placeholder="Дом, Работа, Спорт"></div>' +
-    '<div class="fld"><label>Тип</label>' + pick('ck', c.k, [['list', 'папка дел'], ['count', 'счётчик'], ['shop', 'покупки'], ['mood', 'настроение']]) +
-    '<div class="sub">Папка — галочки. Счётчик — цель в единицах: шаги, вода, минуты, «5 задач по работе». Покупки — список с ценами и магазинами. Настроение — отметка дня от 😣 до 😄.</div></div>' +
-    (c.k === 'count' ? '<div class="fld"><label>Единица</label>' + pick('cu', c.u, UNITS.map(u => [u, u])) +
-      '<div class="three" style="margin-top:.5rem"><div class="fld" style="margin:0"><label>цель</label><input type="number" id="cg" value="' + esc(c.g) + '" inputmode="numeric"></div>' +
-      '<div class="fld" style="margin:0"><label>шаг кнопки</label><input type="number" id="cstp" value="' + esc(c.stp || 1) + '" inputmode="numeric"></div>' +
-      '<div class="fld" style="margin:0"><label>за</label><select id="cper"><option value="day"' + (c.per !== 'week' ? ' selected' : '') + '>день</option><option value="week"' + (c.per === 'week' ? ' selected' : '') + '>неделю</option></select></div></div></div>' : '') +
-    '<div class="fld"><label>Иконка</label><div class="emos">' + EMO.map((e, i) => '<button data-a="cie" data-v="' + i + '" aria-pressed="' + (c.i === e) + '">' + e + '</button>').join('') + '</div></div>' +
-    '<div class="fld"><label>Цвет</label><div class="cols8">' + PAL.map((p, i) => '<button data-a="cci" data-v="' + i + '" style="background:' + p + '" aria-pressed="' + (c.col === p) + '" aria-label="' + p + '"></button>').join('') + '</div></div>' +
+
+    '<div class="two"><div class="fld"><label>Иконка</label>' +
+    '<button class="big-btn alt" style="margin-top:0;font-size:1.3rem" data-a="emoopen" data-v="circle">' + esc(c.i) + '</button></div>' +
+    '<div class="fld"><label>Цвет</label><input type="color" id="ccol" value="' + esc(c.col) + '" data-a="ccolin" style="height:2.9rem;padding:.2rem"></div></div>' +
+    '<div class="cols8">' + PAL.map((p, i) =>
+      '<button data-a="cci" data-v="' + i + '" style="background:' + p + '" aria-pressed="' + (c.col === p) + '" aria-label="' + p + '"></button>').join('') + '</div>' +
+
+    '<div class="fld"><label>Что это</label>' + pick('ck', c.k, [['list', '📋 дела'], ['count', '🔢 счётчик'], ['shop', '🛒 покупки'], ['mood', '🌤 настроение']]) +
+    '<div class="sub">' + ({
+      list: 'Папка с делами: галочки, повторы по дням, страховка.',
+      count: 'Счётчик с целью: шаги, вода, минуты, «пять задач по работе». Считает за день или за неделю.',
+      shop: 'Список покупок: количество, цена, магазин, сумма и перенос некупленного.',
+      mood: 'Отметка дня от 😣 до 😄 с короткой заметкой — и график за две недели.',
+    }[c.k] || '') + '</div></div>' +
+
+    (cnt ? '<div class="card sec" style="padding:.7rem"><h3>Счётчик</h3>' +
+      '<div class="fld"><label>В чём считаем</label>' + pick('cu', c.u, units.map(u => [u, u])) +
+      '<input type="text" id="cuf" value="' + esc(c.u || '') + '" placeholder="своя единица: отжиманий, глав, вёдер" style="margin-top:.4rem"></div>' +
+      '<div class="two"><div class="fld"><label>Цель</label><input type="number" id="cg" value="' + esc(c.g) + '" inputmode="decimal" step="any"></div>' +
+      '<div class="fld"><label>Шаг кнопки</label><input type="number" id="cstp" value="' + esc(c.stp || 1) + '" inputmode="decimal" step="any"></div></div>' +
+      '<div class="fld"><label>Цель считается</label>' + pick('cper', c.per || 'day', [['day', 'за день'], ['week', 'за неделю']]) +
+      '<div class="sub">' + (c.per === 'week'
+        ? 'Недельная цель не мешает закрывать день: «три прогулки в неделю» не станет ежедневным долгом.'
+        : 'Дневная цель входит в состав дня: пока не набрано — день не закрыт.') + '</div></div>' +
+      '<div class="sub">Быстрые кнопки в круге будут «−' + esc(c.stp || 1) + '» и «+' + esc(c.stp || 1) + '», а рядом поле для точного числа.</div></div>' : '') +
+
+    '<div class="fld"><label>Папка</label>' +
+    pick('cgrp', c.grp || '', [['', 'без папки']].concat(W.groups.map(g => [g.id, g.i + ' ' + g.n]))) +
+    '<div class="srow"><button data-a="gnew2">＋ новая папка</button></div></div>' +
+
     '<div class="fld"><label>Кто видит</label>' + pick('cvis', c.vis, VIS) +
     '<div class="sub">' + (c.vis === 'prv' ? 'Шифруется. ' + esc(W.name(W.you)) + ' не видит ни круга, ни дел, ни отметок.' : c.vis === 'shared'
       ? 'Оба добавляют дела и закрывают их. У дела можно выбрать, кто делает: я, ' + esc(W.name(W.you)) + ' или оба.'
       : esc(W.name(W.you)) + ' видит кольцо и дела, может поддержать, но не правит. Отдельное дело можно пометить личным.') + '</div></div>' +
-    (c._new ? '' : '<div class="fld"><label>Пауза</label>' + pick('coff', c.off ? 1 : 0, [[0, 'работает'], [1, 'на паузе — не считается в дне']]) + '</div>') +
+
+    '<div class="fld"><label>В какие дни круг работает</label><div class="days">' + DN.map((d, i) =>
+      '<button class="db2" data-a="cday" data-v="' + i + '" aria-pressed="' + !!days[i] + '">' + d + '</button>').join('') + '</div>' +
+    '<div class="sub">' + (days.every(Boolean) ? 'Каждый день. Снятый день — круг в этот день не считается совсем.'
+      : 'Работает: ' + DN.filter((_, i) => days[i]).join(', ') + '. В остальные дни круг не показывается и не портит статистику.') + '</div></div>' +
+
+    '<div class="fld"><label>Заметка</label><input type="text" id="cnote" value="' + esc(c.note || '') + '" placeholder="зачем этот круг, что считается сделанным"></div>' +
+
+    (c._new ? '' : '<div class="fld"><label>Пауза</label>' + pick('coff', c.off ? 1 : 0, [[0, 'работает'], [1, '⏸ на паузе']]) +
+      '<div class="sub">Круг на паузе не считается в дне и не рвёт серию, но история остаётся.</div></div>') +
+
     '<div class="srow"><button data-a="csave" class="k">Сохранить</button>' + (c._new ? '' : '<button data-a="cdel" class="w">Удалить круг</button>') + '</div>' +
     '<div class="srow"><button data-a="close">Отмена</button></div>';
+}
+
+/* ---------- просьба: куда её положить ----------
+   Просьба не сваливается в случайный круг: тот, кого попросили, сам
+   решает, в какой круг и на какой день она встанет. Для покупки
+   сразу предлагается круг покупок. */
+export let RF = null;
+export const reqCircles = () => W.myCircles.filter(c => (c.k === 'list' || c.k === 'shop') && !c._ro);
+export function newRF(id) {
+  const r = W.requests.find(x => x.id === id);
+  if (!r) { RF = null; return; }
+  const mine = reqCircles(), shop = mine.find(c => c.k === 'shop');
+  RF = { r, c: (r.kind === 'buy' && shop ? shop.id : (mine[0] || {}).id || ''), d: W.today };
+}
+export function sheetTakeReq() {
+  if (!RF) return '<div class="sn">Просьбы уже нет</div><div class="srow"><button data-a="close">Закрыть</button></div>';
+  const r = RF.r, mine = reqCircles();
+  return '<div class="sn">' + (r.kind === 'buy' ? '🛒 Просьба купить' : '📨 Просьба') + '</div>' +
+    '<div class="card sec" style="padding:.7rem"><b>' + esc(r.n) + '</b>' +
+    '<div class="mini" style="margin-top:.35rem"><span class="tagi">от ' + esc(W.gen(r.own)) + '</span>' +
+    (r.note ? '<span class="tagi">' + esc(r.note) + '</span>' : '') +
+    (r.d ? '<span class="tagi">просит на ' + esc(inDays(r.d)) + '</span>' : '') + '</div></div>' +
+    (mine.length
+      ? '<div class="fld"><label>В какой круг</label>' + pick('rfc', RF.c, mine.map(c => [c.id, circleLabel(c)])) + '</div>'
+      : '<div class="sub">Круга для дел пока нет — он создастся сам.</div>') +
+    '<div class="fld"><label>На какой день</label>' +
+    pick('rfd', RF.d, [[W.today, 'сегодня'], [addK(W.today, 1), 'завтра'], [addK(W.today, 2), 'послезавтра']]) + '</div>' +
+    '<div class="srow"><button data-a="reqtake" class="k">Взять</button><button data-a="reqdec2" class="w">Отказаться</button></div>' +
+    '<div class="srow"><button data-a="close">Позже</button></div>';
 }
 
 /* ---------- цель недели ---------- */

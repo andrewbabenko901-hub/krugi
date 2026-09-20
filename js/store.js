@@ -21,7 +21,7 @@ export const PEOPLE_DEFAULT = {
 export const other = id => id === 'andrey' ? 'diana' : 'andrey';
 
 /* Списки сущностей: у каждой id, own (чья), upd (время правки), del, vis. */
-export const LISTS = ['circles', 'tasks', 'wishes', 'boards', 'events', 'dates',
+export const LISTS = ['circles', 'groups', 'tasks', 'wishes', 'boards', 'events', 'dates',
                       'pledges', 'requests', 'goals', 'kudos', 'pokes', 'tpls'];
 /* Карты по дням и ответы: у каждой записи своё время at. */
 export const MAPS = ['log', 'counts', 'answers', 'rsvp', 'thanks', 'sealed', 'claims'];
@@ -48,7 +48,7 @@ function emptyData() {
 export function defaultUI() {
   return {
     dash: WIDGETS_DEFAULT.map(id => ({ id, on: !WIDGETS_OFF.includes(id) })),
-    cols: 0, scale: 1, dens: 'normal', theme: 'auto', corder: [],
+    cols: 0, scale: 1, dens: 'normal', theme: 'auto', corder: [], closed: [], recentEmo: [],
     wk: { group: 'circle', heat: 1, tot: 1, weekend: 1, count: 1, once: 1, done: 1, partner: 1, priv: 1,
           sort: 'circle', fc: 'all', fw: 'all', sum: 1 },
     shopF: { who: 'all', left: 0, store: 'all' },
@@ -60,7 +60,8 @@ export function defaultUI() {
 export function seedState(me) {
   return {
     v: 3, me, people: clone(PEOPLE_DEFAULT), data: emptyData(),
-    prefs: { ins: 2 }, ui: defaultUI(), seen: { feed: 0 },
+    prefs: { ins: 2 }, ui: defaultUI(), seen: { feed: 0, note: 0 },
+    push: { on: 0, subs: {} },          // подписки на уведомления, по устройствам
     firstDay: todayKey(), created: now(),
   };
 }
@@ -107,7 +108,9 @@ function fixup(s) {
   s.people = {};
   for (const id of PEOPLE) s.people[id] = Object.assign(clone(PEOPLE_DEFAULT[id]), pp[id] || {});
   s.prefs = Object.assign({ ins: 2 }, s.prefs || {});
-  s.seen = Object.assign({ feed: 0 }, s.seen || {});
+  s.seen = Object.assign({ feed: 0, note: 0 }, s.seen || {});
+  s.push = Object.assign({ on: 0, subs: {} }, s.push || {});
+  if (!s.push.subs || typeof s.push.subs !== 'object') s.push.subs = {};
 }
 
 export function saveLocal() {

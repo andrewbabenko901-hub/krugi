@@ -129,6 +129,9 @@ export async function buildFile(sum) {
   pub.ui = S.ui; pub.uiAt = S.uiAt || 0; pub.prefs = S.prefs;
   const key = getKey();
   const file = { app: 'krugi', v: 3, who: S.me, at: now(), profile: S.people[S.me], profileAt: S.profileAt || 0, pub, sec: null };
+  // Подписки на уведомления — не в шифре: пара должна их прочитать, чтобы
+  // прислать уведомление. Репозиторий приватный, кроме двоих туда никто не ходит.
+  if (S.push && S.push.subs && Object.keys(S.push.subs).length) file.push = { on: S.push.on ? 1 : 0, subs: S.push.subs };
   if (foreignSec && sync.needKey) {
     // В базе лежит личное, зашифрованное другим ключом. Молча затереть его
     // нельзя — там могут быть записи с другого устройства. Переносим как есть
@@ -171,6 +174,15 @@ async function absorbOwn(file) {
     n++;
   }
   if (file.pub.prefs) S.prefs = Object.assign(S.prefs, file.pub.prefs);
+  if (file.push && file.push.subs) {              // подписки с других моих устройств
+    const p = S.push || (S.push = { on: 0, subs: {} });
+    if (!p.subs) p.subs = {};
+    for (const id in file.push.subs) {
+      const a = p.subs[id], b = file.push.subs[id];
+      if (!a || (b.at || 0) > (a.at || 0)) { p.subs[id] = b; n++; }
+    }
+    p.on = Object.keys(p.subs).some(id => !p.subs[id].off) ? 1 : 0;
+  }
   if (file.sec) {
     const key = getKey();
     if (key && cryptoOk) {
@@ -244,7 +256,7 @@ async function pullPartner() {
   if (f.sha === meta.psha && P) return;
   meta.psha = f.sha; saveMeta();
   const j = f.json;
-  setPartner({ at: j.at, profile: j.profile, pub: j.pub, sha: f.sha });
+  setPartner({ at: j.at, profile: j.profile, pub: j.pub, push: j.push || null, sha: f.sha });
   changed('partner');
 }
 
