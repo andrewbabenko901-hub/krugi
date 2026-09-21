@@ -1,7 +1,7 @@
 /* Куски разметки, которые нужны на нескольких экранах. */
 import { esc, fmt, DN, money, domainOf, safeUrl, shortK, inDays } from './util.js';
 import { ring, chk, X_ICON } from './ui.js';
-import { faceSvg, faceOf, movedSince } from './faces.js';
+import { faceSvg, faceOf, movedSince, RICH, tint } from './faces.js';
 import { W } from './ctx.js';
 import { S } from './store.js';
 
@@ -62,6 +62,10 @@ export const cellSize = () => CSIZE[S.ui.csize] || CSIZE[1];
 
 /** Что написано в середине круга. */
 function centerOf(c, k, x, done) {
+  if (RICH.has(faceOf(c)) && c.k !== 'mood') {
+    const val = done ? '✓' : c.k !== 'count' && x.a ? x.d + '/' + x.a : Math.round((x.empty ? 0 : x.p) * 100) + '%';
+    return '<span class="rich"><span class="ri">' + esc(c.i) + '</span><span class="rv">' + val + '</span></span>';
+  }
   if (c.k === 'mood') { const v = W.cval(c, k); return '<span class="em">' + (v ? MOODS[v - 1][0] : esc(c.i)) + '</span>'; }
   if (done) return '<span class="em">✓</span>';
   if (c.k !== 'count' && x.a) return '<span class="cnt">' + x.d + '/' + x.a + '</span>';
@@ -77,7 +81,9 @@ function capOf(c, k) {
   const cap = S.ui.cap;
   if (cap === 2) return '';
   const fire = S.ui.fire === 0 ? 0 : W.cstreak(c, k);
-  const nm = '<div class="nm">' + esc(c.i) + ' ' + esc(c.n) +
+  // значок уже крупно в плитке или внутри кольца — второй раз в подписи не нужен
+  const iconInside = faceOf(c) === 'ctile' || (RICH.has(faceOf(c)) && c.k !== 'mood');
+  const nm = '<div class="nm">' + (iconInside ? '' : esc(c.i) + ' ') + esc(c.n) +
     (fire > 1 ? ' <span class="fire">🔥' + fire + '</span>' : '') + '</div>';
   return cap === 0 ? nm : nm + '<div class="nx">' + esc(nextOf(c, k)) + '</div>';
 }
@@ -111,6 +117,14 @@ export function cellHTML(c, k, size) {
       (fire > 1 ? '<span class="bf">🔥' + fire + '</span>' : '') +
       (done ? '<span class="bd">✓</span>' : '') + '</button>');
   }
+  if (face === 'ctile') {
+    const pct = Math.round(p * 100);
+    return wrap('<button class="' + cls + '" data-a="circle" data-id="' + esc(c.id) + '" style="--c:' + esc(c.col) +
+      ';--c2:' + esc(tint(c.col, .5)) + '">' + cBadges(c) +
+      (done ? '<span class="cp">✓</span>' : pct ? '<span class="cp">' + pct + '%</span>' : '') +
+      '<span class="ce">' + (c.k === 'mood' && x.v ? MOODS[x.v - 1][0] : esc(c.i)) + '</span>' +
+      capOf(c, k) + '<span class="cb"><i style="width:' + pct + '%"></i></span></button>');
+  }
   if (face === 'tile') {
     const sz = size || cellSize();
     return wrap(open + '<span class="tl" style="min-height:' + sz + 'rem;background:' + esc(c.col) +
@@ -119,7 +133,7 @@ export function cellHTML(c, k, size) {
       '<span class="tb"><i style="width:' + Math.round(p * 100) + '%;background:' + esc(c.col) + '"></i></span></span>' +
       capOf(c, k) + '</button>');
   }
-  return wrap(open + faceSvg(c, x, size || cellSize()) +
+  return wrap(open + faceSvg(c, x, size || cellSize(), k) +
     '<div class="cen">' + centerOf(c, k, x, done) + '</div>' + capOf(c, k) + '</button>');
 }
 

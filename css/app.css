@@ -626,3 +626,218 @@ body.hasnote .wrap{padding-top:calc(3.4rem + var(--sat))}
 .cellw.drag .cell{pointer-events:none}
 .cellw.drag.dragging{z-index:6;opacity:.96;filter:drop-shadow(0 .6rem 1.2rem rgba(0,0,0,.28))}
 .cellw.drag.dragging .cell{border-color:var(--ink)}
+
+/* ============================================================
+   НЕДЕЛЯ КАК ТРЕКЕР ПРИВЫЧЕК
+   Строка — дело со своим цветом (--c), кружок на каждый день.
+   ============================================================ */
+.wkr{border-top:0;padding:calc(.45rem * var(--pad)) .7rem}
+.wkr + .wkr{border-top:1px solid var(--line2)}
+.wkr .tn{display:flex;gap:.45rem;align-items:flex-start}
+.wkr .tn .te{font-size:1.05rem;line-height:1.2;flex:0 0 auto}
+.wkr .tn .tt{min-width:0;display:flex;flex-direction:column}
+.wkr .tn .tt b{font-size:.82rem;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
+.wkr .tn .tt small{font-size:.64rem;color:var(--mut);margin-top:.1rem}
+.wkh span.td{color:var(--acc);font-weight:700}
+
+.bb{width:1.72rem;height:1.72rem;border-radius:50%;display:grid;place-items:center;margin:0 auto;padding:0;
+  border:1.8px solid var(--line);background:transparent;position:relative;font-size:.78rem;line-height:1;
+  transition:transform .12s,background .2s,border-color .2s}
+button.bb:active{transform:scale(.86)}
+.bb i{font-style:normal}
+.bb .ck{font-weight:700}
+.bb .em{font-size:.95rem}
+.bb.off{border:0;width:.34rem;height:.34rem;background:var(--line)}
+.bb.fut{border-style:dashed;opacity:.7}
+.bb.fail{background:var(--line2);border-color:var(--line2);color:var(--mut)}
+.bb.mood{border:0;background:transparent}
+.bb.mood .em{font-size:1.15rem}
+/* сегодня — внешнее колечко цветом строки */
+.bb.td{box-shadow:0 0 0 2px var(--pap),0 0 0 3.6px var(--c,var(--ink))}
+.bb.off.td{box-shadow:none}
+/* недобор счётчика: заливка снизу */
+.bb.part{border-color:var(--c);background:linear-gradient(to top,var(--cs) var(--p),transparent 0)}
+
+/* 1. цветные: закрашено, белая галочка */
+.chk-fill .bb.done{background:var(--c);border-color:var(--c);color:var(--ck)}
+.chk-fill .bb.ins{background:var(--cs);border-color:var(--c);color:var(--c)}
+/* 2. пастель */
+.chk-soft .bb{border-color:transparent;background:var(--line2)}
+.chk-soft .bb.done{background:var(--cs);color:var(--c)}
+.chk-soft .bb.ins{background:var(--cs);color:var(--c);opacity:.6}
+.chk-soft .bb.off{background:var(--line)}
+/* 3. контур */
+.chk-ring .bb.done{border-color:var(--c);color:var(--c);border-width:2.4px}
+.chk-ring .bb.ins{border-color:var(--c);color:var(--c);border-style:dotted}
+/* 4. точки */
+.chk-dot .bb{border-color:transparent;background:var(--line2)}
+.chk-dot .bb .ck{display:none}
+.chk-dot .bb.done::after{content:"";width:.95rem;height:.95rem;border-radius:50%;background:var(--c)}
+.chk-dot .bb.ins::after{content:"";width:.95rem;height:.95rem;border-radius:50%;background:var(--cs)}
+.chk-dot .bb.fail .ck{display:block}
+/* 5. эмодзи */
+.chk-emoji .bb.done,.chk-emoji .bb.ins{background:var(--cs);border-color:transparent}
+.chk-emoji .bb.ins{opacity:.6}
+/* 6. квадраты — прежний строгий вид */
+.chk-box .bb{border-radius:.42rem;width:1.55rem;height:1.55rem}
+.chk-box .bb.done{background:var(--ink);border-color:var(--ink);color:var(--inv)}
+.chk-box .bb.ins{background:var(--mut);border-color:var(--mut);color:var(--inv)}
+.chk-box .bb.off{border-radius:50%;width:.34rem;height:.34rem}
+.chk-box .bb.td{box-shadow:0 0 0 2px var(--pap),0 0 0 3.4px var(--ink)}
+
+/* выбор вида галочек в настройке */
+.chks{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+.chkb{border:1px solid var(--line);border-radius:.75rem;padding:.55rem .5rem;background:var(--pap);
+  display:flex;flex-direction:column;gap:.2rem;text-align:left}
+.chkb[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.chkb b{font-size:.8rem}
+.chkb small{font-size:.63rem;color:var(--mut);line-height:1.3}
+.wk.demo{display:flex;gap:.3rem;border:0;box-shadow:none;background:transparent;overflow:visible;padding:.15rem .1rem .3rem}
+.wk.demo .bb{margin:0;width:1.45rem;height:1.45rem;font-size:.68rem}
+
+/* ============================================================
+   ЦВЕТНАЯ ПЛИТКА — круг-карточка с большим объёмным значком
+   ============================================================ */
+.cell.f-ctile{background:linear-gradient(155deg,var(--c2),var(--c));border-color:transparent;color:#fff;
+  min-height:8.4rem;padding:.55rem .4rem .7rem;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-end;overflow:hidden;box-shadow:0 .35rem .9rem rgba(0,0,0,.14)}
+.cell.f-ctile .ce{font-size:2.7rem;line-height:1;margin:.5rem 0 .3rem;display:block;
+  filter:drop-shadow(0 .4rem .35rem rgba(0,0,0,.28));transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
+.cell.f-ctile:active .ce{transform:scale(.9) rotate(-4deg)}
+.cell.f-ctile .nm{color:#fff;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.28)}
+.cell.f-ctile .nx{color:rgba(255,255,255,.88);text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.cell.f-ctile .badge2{background:rgba(255,255,255,.3);border-color:transparent;color:#fff;backdrop-filter:blur(4px)}
+.cell.f-ctile .badge2.l{top:auto;bottom:auto}
+.cell.f-ctile .cp{position:absolute;top:.42rem;left:.45rem;font-size:.6rem;font-weight:700;color:#fff;
+  background:rgba(255,255,255,.3);border-radius:99rem;padding:.02rem .38rem}
+.cell.f-ctile .cb{position:absolute;left:0;right:0;bottom:0;height:.32rem;background:rgba(255,255,255,.28)}
+.cell.f-ctile .cb i{display:block;height:100%;background:#fff;border-radius:0 99rem 99rem 0;transition:width .5s cubic-bezier(.25,1,.35,1)}
+.cell.f-ctile.done{box-shadow:0 0 0 2.5px rgba(255,255,255,.9) inset,0 .35rem .9rem rgba(0,0,0,.16)}
+.cell.f-ctile .fire{background:rgba(255,255,255,.3);border-color:transparent;color:#fff}
+.cellw.qw .cell.f-ctile .nm{padding:0 .2rem}
+.cellw.qw .cell.f-ctile .nx{padding:0 1.5rem}
+.cellw .cell.f-ctile ~ .qplus{background:#fff;color:#15161A;bottom:.55rem;right:.4rem}
+@media (prefers-reduced-motion:no-preference){
+  html[data-fx="1"] .cell.f-ctile.grow .ce{animation:hop .55s cubic-bezier(.3,1.6,.5,1)}
+  html[data-fx="1"] .cell.f-ctile.done .ce{animation:bob 3.2s ease-in-out infinite}
+}
+@keyframes hop{0%{transform:scale(.7)}55%{transform:scale(1.15) rotate(6deg)}100%{transform:none}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.18rem)}}
+
+/* значок и процент внутри кольца */
+.cell .cen .rich{display:flex;flex-direction:column;align-items:center;line-height:1.05}
+.cell .cen .rich .ri{font-size:1.05rem}
+.cell .cen .rich .rv{font-size:.72rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:.08rem}
+svg.f-orb .wave{opacity:.92}
+@media (prefers-reduced-motion:no-preference){
+  html[data-fx="1"] svg.f-orb .wave{animation:wavego 4.2s linear infinite}
+  html[data-fx="1"] svg.f-spark .spk.on{animation:twinkle 2.4s ease-in-out infinite;animation-delay:calc(var(--i) * .22s);transform-box:fill-box;transform-origin:center}
+}
+@keyframes twinkle{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.7)}}
+
+/* образец плитки в панели */
+.pv .pvct{display:grid;place-items:center;border-radius:.8rem;position:relative;overflow:hidden;
+  background:linear-gradient(155deg,var(--c2),var(--c));box-shadow:0 .25rem .6rem rgba(0,0,0,.15)}
+.pv .pvct .pe{font-size:1.5rem;filter:drop-shadow(0 .25rem .2rem rgba(0,0,0,.25))}
+.pv .pvct i{position:absolute;left:0;bottom:0;height:.22rem;background:#fff}
+.pv .pvct b{position:absolute;top:.15rem;left:.3rem;font-size:.6rem;color:#fff}
+
+/* готовые темы */
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.7rem}
+.preset{border:1px solid var(--line);border-radius:.9rem;padding:0 0 .55rem;background:var(--pap);overflow:hidden;
+  display:flex;flex-direction:column;text-align:left}
+.preset[aria-pressed=true]{border-color:var(--ink);box-shadow:0 0 0 1.5px var(--ink)}
+.preset .pbg{height:3.6rem;display:grid;place-items:center;margin-bottom:.4rem}
+.preset .pic .pv small{display:none}
+.preset b{font-size:.82rem;padding:0 .6rem}
+.preset small{font-size:.63rem;color:var(--mut);line-height:1.3;padding:0 .6rem;margin-top:.1rem}
+.p-candy .pbg{background:linear-gradient(135deg,#FFE0F0,#E2E8FF 45%,#DDFBF1 75%,#FFF1D6)}
+.p-ocean .pbg{background:linear-gradient(135deg,#D9F1FF,#DBFFF8 60%,#E6E9FF)}
+.p-aurora .pbg{background:linear-gradient(135deg,#E1FFF1,#E8E2FF 55%,#FFE3F6)}
+.p-cosmos .pbg{background:radial-gradient(circle at 20% 10%,#3B1C6E,transparent 60%),radial-gradient(circle at 90% 80%,#0F4C75,transparent 55%),#0A0B14}
+.p-forest .pbg{background:linear-gradient(135deg,#E3F6DD,#F1FAE3 55%,#DDF1EC)}
+.p-paper .pbg{background:#F3F3F0}
+.p-ink .pbg{background:#E8E9EE}
+.p-neon .pbg{background:#07080C}
+
+/* ============================================================
+   ЯРКИЕ ТЕМЫ
+   Переливающийся фон, карточки с радужной рамкой, кнопки градиентом.
+   ============================================================ */
+:root[data-skin=candy]{--bg:#F7F2FB;--pap:#FFFFFF;--acc:#6A5CFF;--line:#ECE3F3;--line2:#F5EFF9;--track:#EDE6F3;
+  --nav:rgba(255,255,255,.82);
+  --bgimg:linear-gradient(135deg,#FFE3F1 0%,#E7ECFF 32%,#E2FBF3 62%,#FFF3DC 100%);
+  --rim:linear-gradient(135deg,#FF6FB0,#8A7BFF 35%,#35D0B0 68%,#FFBE3D);
+  --btn:linear-gradient(135deg,#6A7BFF,#B45CFF 55%,#FF6FB0)}
+:root[data-skin=candy][data-theme=dark]{--bg:#140F22;--pap:#1D1730;--ink:#F1ECFA;--mut:#A39BBF;--line:#2E2645;--line2:#241D38;--track:#322A4B;
+  --nav:rgba(20,15,34,.85);
+  --bgimg:radial-gradient(circle at 10% 0%,#3A1D5C,transparent 55%),radial-gradient(circle at 100% 40%,#0F3355,transparent 55%),radial-gradient(circle at 30% 100%,#123D35,transparent 55%),#140F22;
+  --rim:linear-gradient(135deg,#FF6FB0,#8A7BFF 35%,#35D0B0 68%,#FFBE3D)}
+:root[data-skin=ocean]{--bg:#EEF8FD;--pap:#FFFFFF;--acc:#1383D6;--line:#DCEBF3;--line2:#EAF4F9;--track:#DDEBF2;
+  --nav:rgba(255,255,255,.82);
+  --bgimg:linear-gradient(160deg,#DDF2FF 0%,#DFFFF8 55%,#E8EBFF 100%);
+  --rim:linear-gradient(135deg,#1FA2FF,#12D8FA 50%,#7CF0C8);
+  --btn:linear-gradient(135deg,#1FA2FF,#12C6E8)}
+:root[data-skin=ocean][data-theme=dark]{--bg:#081521;--pap:#0F2131;--ink:#E4F2FA;--mut:#8FA8B8;--line:#1B3346;--line2:#15293A;--track:#1D3548;
+  --nav:rgba(8,21,33,.86);
+  --bgimg:radial-gradient(circle at 0% 0%,#0B3A5C,transparent 55%),radial-gradient(circle at 100% 70%,#054A4A,transparent 55%),#081521}
+:root[data-skin=aurora]{--bg:#F3F7F5;--pap:#FFFFFF;--acc:#7B4FE0;--line:#E2ECE8;--line2:#EEF4F1;--track:#E2EBE7;
+  --nav:rgba(255,255,255,.82);
+  --bgimg:linear-gradient(150deg,#DFFFF0 0%,#E9E3FF 50%,#FFE4F6 100%);
+  --rim:linear-gradient(135deg,#2EE59D,#7B6CFF 55%,#FF7AD9);
+  --btn:linear-gradient(135deg,#27C98C,#7B6CFF)}
+:root[data-skin=aurora][data-theme=dark]{--bg:#0B1413;--pap:#131E1D;--ink:#E7F4EF;--mut:#91A8A2;--line:#1F302D;--line2:#192725;--track:#223532;
+  --nav:rgba(11,20,19,.86);
+  --bgimg:radial-gradient(ellipse at 20% 0%,#0E5A45,transparent 60%),radial-gradient(ellipse at 90% 30%,#3D2A7A,transparent 55%),#0B1413}
+:root[data-skin=cosmos],:root[data-skin=cosmos][data-theme=light],:root[data-skin=cosmos][data-theme=dark]{
+  --bg:#0A0B14;--pap:#14152A;--ink:#ECEEFF;--inv:#0A0B14;--mut:#8D90B8;--line:#24264A;--line2:#1B1D38;--track:#262950;
+  --acc:#7F9CFF;--ok:#4FF0B0;--warn:#FF6B8B;--gold:#FFD166;--nav:rgba(10,11,20,.85);
+  --okbg:#0C1C19;--accbg:#121838;--warnbg:#23101A;--goldbg:#221C0C;--sh:0 1px 3px rgba(0,0,0,.6);
+  --bgimg:radial-gradient(circle at 15% 5%,#3B1C6E,transparent 50%),radial-gradient(circle at 95% 45%,#0F4C75,transparent 50%),radial-gradient(circle at 40% 110%,#5A1446,transparent 55%),#0A0B14;
+  --rim:linear-gradient(135deg,#7F5CFF,#00D4FF 50%,#FF4FD8);
+  --btn:linear-gradient(135deg,#7F5CFF,#00B7FF);color-scheme:dark}
+:root[data-skin=forest]{--bg:#F2F8EF;--pap:#FFFFFF;--acc:#2E9E5B;--line:#DDEBD8;--line2:#EBF4E7;--track:#DCE9D6;
+  --nav:rgba(255,255,255,.82);
+  --bgimg:linear-gradient(160deg,#E3F6DB 0%,#F4FBE4 55%,#DDF2EC 100%);
+  --rim:linear-gradient(135deg,#3BB273,#A8E063 55%,#56CCF2);
+  --btn:linear-gradient(135deg,#2E9E5B,#56B870)}
+:root[data-skin=forest][data-theme=dark]{--bg:#0C140E;--pap:#142018;--ink:#E6F2E8;--mut:#90A895;--line:#203226;--line2:#1A2920;--track:#223628;
+  --nav:rgba(12,20,14,.86);
+  --bgimg:radial-gradient(circle at 10% 0%,#1D4A2A,transparent 55%),radial-gradient(circle at 100% 60%,#12404A,transparent 55%),#0C140E}
+
+html[data-vivid="1"]{background:var(--bg)}
+html[data-vivid="1"] body{background:transparent}
+html[data-vivid="1"] body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bgimg);pointer-events:none}
+html[data-vivid="1"] .card,html[data-vivid="1"] .wk,html[data-vivid="1"] .wkring,html[data-vivid="1"] .sumcell{
+  border:1.5px solid transparent;background:linear-gradient(var(--pap),var(--pap)) padding-box,var(--rim) border-box}
+html[data-vivid="1"] .big-btn:not(.alt),html[data-vivid="1"] .srow button.k,html[data-vivid="1"] #note .nb2{
+  background:var(--btn);border-color:transparent;color:#fff;box-shadow:0 .3rem .8rem rgba(80,60,200,.22)}
+html[data-vivid="1"] .streak .n{background:var(--rim);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-vivid="1"] .xpbar i{background:var(--btn)}
+html[data-vivid="1"] .dbtn.sel{background:var(--btn);color:#fff;border-color:transparent}
+html[data-vivid="1"] .dbtn.sel .dw{color:rgba(255,255,255,.85)}
+html[data-vivid="1"] .dcol .dbtn:nth-child(1) .dd{color:#6A7BFF}
+html[data-vivid="1"] .dcol .dbtn:nth-child(2) .dd{color:#3A8DF0}
+html[data-vivid="1"] .dcol .dbtn:nth-child(3) .dd{color:#F0566E}
+html[data-vivid="1"] .dcol .dbtn:nth-child(4) .dd{color:#22B07D}
+html[data-vivid="1"] .dcol .dbtn:nth-child(5) .dd{color:#2BB3C4}
+html[data-vivid="1"] .dcol .dbtn:nth-child(6) .dd{color:#F39A2D}
+html[data-vivid="1"] .dcol .dbtn:nth-child(7) .dd{color:#9A5CF0}
+html[data-vivid="1"] .dcol .dbtn.sel .dd{color:#fff}
+html[data-vivid="1"] .addc{border:2px dashed transparent;background:linear-gradient(var(--pap),var(--pap)) padding-box,var(--rim) border-box;opacity:.85}
+html[data-vivid="1"] .tab[aria-current=true]{background:var(--btn);color:#fff}
+html[data-vivid="1"] nav{border-top-color:transparent}
+
+/* выбор эмодзи: разделы, подразделы, оттенки */
+.tones{display:flex;gap:.3rem;margin-top:.55rem}
+.tones button{flex:1;font-size:1.15rem;padding:.3rem 0;border-radius:.55rem;border:1px solid transparent;text-align:center}
+.tones button[aria-pressed=true]{border-color:var(--ink);background:var(--line2)}
+.emtabs{display:grid;grid-template-columns:repeat(9,1fr);gap:.2rem;margin-top:.55rem}
+.emtabs .pb{padding:.35rem 0;text-align:center;font-size:1.15rem;border-radius:.55rem}
+.emtabs .pb span{display:none}
+.emh{font-size:.72rem;font-weight:600;color:var(--mut);margin:.75rem 0 .15rem;letter-spacing:.02em;
+  position:sticky;top:-.6rem;background:var(--pap);padding:.25rem 0;z-index:1}
+.emh small{font-weight:400;opacity:.7}
+.embody .emos.big{max-height:none}
+.emos.big{grid-template-columns:repeat(8,1fr)}
+@media (min-width:30rem){.emos.big{grid-template-columns:repeat(10,1fr)}}

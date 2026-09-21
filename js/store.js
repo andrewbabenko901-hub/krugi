@@ -56,10 +56,13 @@ export function defaultUI() {
     cap: 1,            // подпись под кругом: 0 только название, 1 с делом, 2 без подписи
     fx: 1,             // движение и свет: 1 включено
     quick: 1,          // плюс прямо в ячейке счётчика
+    tone: 0,           // оттенок кожи для эмодзи: 0 — жёлтый, 1..5 — оттенки
     fire: 1,           // огонёк серии на круге
     skin: 'paper',     // палитра оформления
     wk: { group: 'circle', heat: 1, tot: 1, weekend: 1, count: 1, once: 1, done: 1, partner: 1, priv: 1,
-          sort: 'circle', fc: 'all', fw: 'all', sum: 1, rings: 1 },
+          sort: 'circle', fc: 'all', fw: 'all', sum: 1, rings: 1,
+          chk: 'fill',      // вид галочек: fill | soft | ring | dot | emoji | box
+          hue: 'row' },     // цвет строки: row — у каждого дела свой, circle — цвет круга
     shopF: { who: 'all', left: 0, store: 'all' },
     stat: { per: 'week', fc: 'all', duo: 1 },
     wish: { board: 'all', who: 'all', st: 'open', sort: 'new' },

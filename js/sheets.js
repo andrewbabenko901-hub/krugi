@@ -5,7 +5,7 @@ import { S } from './store.js';
 import { ring, pick, chk, tgl } from './ui.js';
 import { taskLi, circleSub, circleLabel, MOODS, UNITS, EMO, PAL, EVENT_KINDS, VIS, whoTag } from './parts.js';
 import { PLEDGE_TYPES } from './model.js';
-import { EMOJI, EMOJI_KEYS } from './emoji.js';
+import { EMOJI_GROUPS, EMOJI_NAMES, EMOJI_TONES, EMOJI_RU, EMOJI_VER } from './emoji.js';
 import { FACES, FACE_NAMES, facePreview, faceOf } from './faces.js';
 
 /* ---------- круг ---------- */
@@ -129,22 +129,45 @@ export function sheetTask(t) {
 /* ---------- вид кругов ----------
    Всё, что человек видит каждый день: форма круга, размер, подпись,
    движение и палитра. Сверху живой образец — меняешь и сразу видно. */
+/* Готовые темы: одним нажатием палитра, форма кругов и движение вместе. */
+export const PRESETS = [
+  ['candy', 'Конфета', 'candy', 'ctile', 'радужные рамки, цветные плитки с большими значками'],
+  ['ocean', 'Океан', 'ocean', 'grad', 'бирюза и синева, кольца переливаются'],
+  ['aurora', 'Сияние', 'aurora', 'orb', 'северное сияние и стеклянные шары с водой'],
+  ['cosmos', 'Космос', 'cosmos', 'spark', 'тёмное небо, кольца с искрами'],
+  ['forest', 'Лес', 'forest', 'wave', 'зелень и свежесть, волнистые кольца'],
+  ['classic', 'Классика', 'paper', 'ring', 'спокойная бумага и тонкие кольца'],
+  ['strict', 'Строгая', 'ink', 'dots', 'графит, кольца по делам — ничего лишнего'],
+  ['neon', 'Неон', 'neon', 'conc', 'тёмный с электрическим светом, три кольца'],
+];
 export const SKINS = [
   ['paper', 'Бумага', 'светлый спокойный, как сейчас'],
+  ['candy', 'Конфета', 'переливы и радужные рамки'],
+  ['ocean', 'Океан', 'бирюзово-синие переливы'],
+  ['aurora', 'Сияние', 'зелёно-фиолетовые переливы'],
+  ['cosmos', 'Космос', 'тёмное небо с туманностями'],
+  ['forest', 'Лес', 'свежая зелень'],
   ['mint', 'Мята', 'прохладный зелёный'],
   ['sunset', 'Закат', 'тёплый песочный с кирпичным'],
   ['ink', 'Графит', 'строгий серо-синий'],
   ['berry', 'Ягода', 'мягкий розово-лиловый'],
   ['neon', 'Неон', 'тёмный с электрическим светом'],
 ];
+const PRESET_COL = { candy: '#FF7A59', ocean: '#1F9BE0', aurora: '#8E5CF0', cosmos: '#6BE7FF', forest: '#2FA565',
+                     classic: '#2F5BD0', strict: '#3D5A80', neon: '#3DF5A8' };
 export function sheetLook() {
   const face = S.ui.face || 'ring', col = W.col(W.me);
   const sample = '<div class="pvrow">' +
     facePreview(face, 0.34, col, 3.4, 'начато') +
     facePreview(face, 0.72, col, 3.4, 'почти') +
     facePreview(face, 1, col, 3.4, 'закрыто') + '</div>';
+  const cur = PRESETS.find(p => p[2] === (S.ui.skin || 'paper') && p[3] === face);
   return '<div class="sn">Вид кругов</div>' +
-    '<div class="sub" style="margin-top:0">Меняй — образец сверху перерисовывается сразу.</div>' +
+    '<div class="sub" style="margin-top:0">Готовая тема — одним нажатием. Ниже можно докрутить всё по отдельности.</div>' +
+    '<div class="presets">' + PRESETS.map(([id, nm, sk, fc, d]) =>
+      '<button class="preset p-' + sk + '" data-a="upreset" data-v="' + id + '" aria-pressed="' + (!!cur && cur[0] === id) + '">' +
+      '<span class="pbg"><span class="pic">' + facePreview(fc, .66, PRESET_COL[id] || col, 2.2) + '</span></span>' +
+      '<b>' + esc(nm) + '</b><small>' + esc(d) + '</small></button>').join('') + '</div>' +
     '<div class="card sec pvbox">' + sample + '</div>' +
 
     '<div class="fld"><label>Форма</label><div class="pick">' + FACES.map(([id, ic, nm]) =>
@@ -177,29 +200,114 @@ export function sheetLook() {
 }
 
 /* ---------- выбор эмодзи ----------
-   Полный набор по разделам плюс поиск по русским словам и недавние. */
+   Полный набор с айфона: девять разделов, в каждом подразделы, как на
+   клавиатуре. Оттенок кожи выбирается один раз и применяется ко всем
+   эмодзи, у которых он есть. Поиск — по-русски: слово превращается в
+   кусочки официальных английских названий, флаги ищутся по названию
+   страны на русском. */
 export const emoSt = { tab: 0, q: '', on: null };   // on: что настраиваем — 'circle' | 'group'
+const TONE_SW = ['✋', '✋🏻', '✋🏼', '✋🏽', '✋🏾', '✋🏿'];
+const withTone = e => { const t = S.ui.tone || 0; return t && EMOJI_TONES[e] ? EMOJI_TONES[e][t - 1] : e; };
+
+/* Какие эмодзи телефон умеет рисовать. На айфоне с новым iOS — все, на старом
+   или на компьютере новые версии Юникода выходят квадратиками. Проверяем по
+   одному представителю каждой версии: рисуем на холсте и ищем цветные точки
+   (квадратик-заглушка всегда серый), а для склеек — что они не распались на
+   несколько значков по ширине. Считается один раз. */
+let maxVer = null;
+function canDraw(e) {
+  try {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 40;
+    const x = cv.getContext('2d', { willReadFrequently: true });
+    x.font = '28px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    x.textBaseline = 'top';
+    if (x.measureText(e).width > 44) return false;          // склейка развалилась
+    x.fillText(e, 2, 2);
+    const d = x.getImageData(0, 0, 40, 40).data;
+    for (let i = 0; i < d.length; i += 4)
+      if (d[i + 3] > 40 && (Math.abs(d[i] - d[i + 1]) > 18 || Math.abs(d[i + 1] - d[i + 2]) > 18)) return true;
+    return false;
+  } catch { return true; }
+}
+function emoMax() {
+  if (maxVer !== null) return maxVer;
+  maxVer = 12;
+  for (const [v, e] of [[13, '🥲'], [13.1, '😶‍🌫️'], [14, '🫠'], [15, '🫨'], [15.1, '🙂‍↔️'], [16, '🫩']]) {
+    if (canDraw(e)) maxVer = v; else break;
+  }
+  return maxVer;
+}
+const drawable = e => !EMOJI_VER[e] || EMOJI_VER[e] <= emoMax();
+let flagRu = null;
+function flagNames() {
+  if (flagRu) return flagRu;
+  flagRu = {};
+  let dn = null;
+  try { dn = new Intl.DisplayNames(['ru'], { type: 'region' }); } catch {}
+  const flags = (EMOJI_GROUPS.find(g => g[1] === 'Флаги') || [0, 0, []])[2].flatMap(s => s[1]);
+  for (const e of flags) {
+    const cps = [...e].map(ch => ch.codePointAt(0));
+    if (dn && cps.length === 2 && cps.every(c => c >= 0x1F1E6 && c <= 0x1F1FF)) {
+      const code = String.fromCharCode(cps[0] - 0x1F1E6 + 65, cps[1] - 0x1F1E6 + 65);
+      try { flagRu[e] = (dn.of(code) || '').toLowerCase(); } catch {}
+    }
+  }
+  return flagRu;
+}
+function emoSearch(q) {
+  const hit = new Set(), parts = [];
+  for (const key in EMOJI_RU) if (key.startsWith(q) || q.startsWith(key)) parts.push(...EMOJI_RU[key]);
+  const en = /[a-z]/.test(q) ? [q] : [];
+  // целый раздел или подраздел по его русскому названию
+  for (const g of EMOJI_GROUPS) {
+    if (g[1].toLowerCase().startsWith(q)) g[2].forEach(s => s[1].forEach(e => hit.add(e)));
+    for (const s of g[2]) if (s[0].toLowerCase().split(' ').some(w => w.startsWith(q))) s[1].forEach(e => hit.add(e));
+  }
+  if (parts.length || en.length) {
+    const want = parts.concat(en);
+    for (const e in EMOJI_NAMES) {
+      const n = EMOJI_NAMES[e];
+      if (want.some(w => n.includes(w))) hit.add(e);
+    }
+  }
+  const fr = flagNames();
+  for (const e in fr) if (fr[e] && fr[e].split(/[\s-]/).some(w => w.startsWith(q))) hit.add(e);
+  return [...hit].filter(drawable).slice(0, 240);
+}
 export function sheetEmoji() {
   const q = emoSt.q.trim().toLowerCase();
-  let list = null, title = '';
-  if (q) {
-    const hit = new Set();
-    for (const key in EMOJI_KEYS) if (key.startsWith(q) || q.startsWith(key)) for (const e of EMOJI_KEYS[key]) hit.add(e);
-    list = [...hit]; title = 'найдено по слову «' + esc(q) + '»';
-    if (!list.length) { list = null; title = ''; }
-  }
+  const grid = arr => '<div class="emos big">' + arr.map(e => {
+    const v = withTone(e);
+    return '<button data-a="emopick" data-v="' + esc(v) + '" title="' + esc(EMOJI_NAMES[e] || '') + '">' + v + '</button>';
+  }).join('') + '</div>';
   const recent = (S.ui.recentEmo || []).slice(0, 16);
-  const cat = EMOJI[emoSt.tab] || EMOJI[0];
-  const grid = arr => '<div class="emos big">' + arr.map(e =>
-    '<button data-a="emopick" data-v="' + esc(e) + '">' + e + '</button>').join('') + '</div>';
+  const g = EMOJI_GROUPS[emoSt.tab] || EMOJI_GROUPS[0];
+  let body = '';
+  if (q) {
+    const list = emoSearch(q);
+    body = list.length
+      ? '<div class="emh">Найдено ' + list.length + ' по слову «' + esc(q) + '»</div>' + grid(list)
+      : '<div class="sub">По слову «' + esc(q) + '» ничего. Попробуй проще: «кот», «спорт», «еда», «сердце», название страны.</div>';
+  } else {
+    body = (recent.length ? '<div class="emh">Недавние</div><div class="emos big">' + recent.map(e =>
+        '<button data-a="emopick" data-v="' + esc(e) + '">' + e + '</button>').join('') + '</div>' : '') +
+      g[2].map(([nm, all]) => {
+        const arr = all.filter(drawable);
+        return arr.length ? '<div class="emh">' + esc(nm) + ' <small>' + arr.length + '</small></div>' + grid(arr) : '';
+      }).join('');
+  }
+  const total = EMOJI_GROUPS.reduce((n, gg) => n + gg[2].reduce((m, s) => m + s[1].filter(drawable).length, 0), 0);
   return '<div class="sn">Иконка</div>' +
-    '<div class="fld"><input type="text" id="emoq" value="' + esc(emoSt.q) + '" placeholder="поиск: дом, еда, спорт, шаги…" ' +
-    'data-a="emoq" data-live="1" autocapitalize="off"></div>' +
-    (list ? '<div class="sub">' + title + '</div>' + grid(list) : '') +
-    (!q && recent.length ? '<div class="sub">Недавние</div>' + grid(recent) : '') +
-    '<div class="pick" style="margin-top:.6rem">' + EMOJI.map((c, i) =>
-      '<button class="pb" data-a="emotab" data-v="' + i + '" aria-pressed="' + (i === emoSt.tab) + '">' + c[0] + ' ' + esc(c[1]) + '</button>').join('') + '</div>' +
-    grid(cat[2]) +
+    '<div class="fld"><input type="text" id="emoq" value="' + esc(emoSt.q) + '" placeholder="поиск: дом, кот, спорт, вода, Франция…" ' +
+    'data-a="emoq" data-live="1" autocapitalize="off" autocomplete="off"></div>' +
+    '<div class="tones" role="group" aria-label="Оттенок кожи">' + TONE_SW.map((t, i) =>
+      '<button data-a="emotone" data-v="' + i + '" aria-pressed="' + ((S.ui.tone || 0) === i) + '">' + t + '</button>').join('') + '</div>' +
+    (q ? '' : '<div class="emtabs">' + EMOJI_GROUPS.map((c, i) =>
+      '<button class="pb" data-a="emotab" data-v="' + i + '" aria-pressed="' + (i === emoSt.tab) + '" title="' + esc(c[1]) + '">' +
+      c[0] + '<span> ' + esc(c[1]) + '</span></button>').join('') + '</div>' +
+      '<div class="sub" style="margin-top:.4rem">' + esc(g[1]) + ' · ' + g[2].length + ' ' + pl(g[2].length, ['подраздел', 'подраздела', 'подразделов']) +
+      ' · всего эмодзи ' + total + '</div>') +
+    '<div class="embody">' + body + '</div>' +
     '<div class="srow"><button data-a="emoclose" class="k">Готово</button></div>';
 }
 

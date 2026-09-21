@@ -184,7 +184,8 @@ A.emoopen = d => {
   SH.emoSt.on = d.v; SH.emoSt.q = '';
   openSheet(SH.sheetEmoji, [], true);
 };
-A.emotab = d => { SH.emoSt.tab = +d.v; SH.emoSt.q = ''; refreshSheet(true); };
+A.emotab = d => { SH.emoSt.tab = +d.v; SH.emoSt.q = ''; refreshSheet(true); const s = document.getElementById('sheet'); if (s) s.scrollTop = 0; };
+A.emotone = d => { S.ui.tone = +d.v; changed('ui'); refreshSheet(true); buzz(6); };
 A.emoq = (d, el) => { SH.emoSt.q = el.value; refreshSheet(true); const i = document.getElementById('emoq'); if (i) { i.focus(); i.selectionStart = i.value.length; } };
 A.emopick = d => {
   const e = d.v;
@@ -284,6 +285,8 @@ A.wks = d => { S.ui.wk.sort = d.v; changed('ui'); };
 A.wkfc = d => { S.ui.wk.fc = d.v; changed('ui'); };
 A.wkfw = d => { S.ui.wk.fw = d.v; changed('ui'); };
 A.wkt = d => { S.ui.wk[d.k] = S.ui.wk[d.k] ? 0 : 1; changed('ui'); };
+A.wkchk = d => { S.ui.wk.chk = d.v; changed('ui'); buzz(6); };
+A.wkhue = d => { S.ui.wk.hue = d.v; changed('ui'); buzz(6); };
 A.dens = d => { S.ui.dens = d.v; changed('ui'); };
 
 /* ---------- главный экран ---------- */
@@ -302,6 +305,13 @@ A.uquick = () => setUI('quick', S.ui.quick ? 0 : 1);
 A.ufire = () => setUI('fire', S.ui.fire ? 0 : 1);
 A.cface = d => { readCF(); SH.CF.face = d.v; refreshSheet(true); };
 A.wrn = d => { S.ui.wrn = +d.v; changed('ui'); };
+A.upreset = d => {
+  const p = SH.PRESETS.find(x => x[0] === d.v); if (!p) return;
+  S.ui.skin = p[2]; S.ui.face = p[3]; S.ui.fx = 1;
+  forgetMoves(); changed('ui'); refreshSheet(true);
+  if (S.ui.fx) confetti();
+  toast('Тема «' + p[1] + '».'); buzz([8, 30, 8]);
+};
 A.lookreset = () => {
   const u = defaultUI();
   Object.assign(S.ui, { face: u.face, csize: u.csize, cw: u.cw, cap: u.cap, fx: u.fx, skin: u.skin, cols: u.cols, dens: u.dens });
