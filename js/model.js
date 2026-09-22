@@ -7,8 +7,8 @@
    держал серию счётчиком, который только рос и никогда не сбрасывался;
    здесь серия — это просто взгляд на историю дней.
    ============================================================ */
-import { di, parse, addK, todayKey, wkStartK, range, nextOccurrence, daysBetween, declName } from './util.js';
-import { LISTS, other, BOARDS_BUILTIN } from './store.js';
+import { di, parse, addK, todayKey, wkStartK, range, nextOccurrence, daysBetween, declName, inDays } from './util.js';
+import { S, LISTS, other, BOARDS_BUILTIN } from './store.js';
 
 /* ---------- сведение ---------- */
 function mergeList(a, b) {
@@ -411,6 +411,60 @@ export function inbox(W) {
 }
 
 /* ============================================================
+   Отправленное: что я послал паре и что с этим стало.
+   Входящие отвечают на вопрос «что от меня хотят», отправленные —
+   «что я просил и чем это кончилось». Без второго половина переписки
+   просто пропадала из виду.
+   ============================================================ */
+export function sent(W) {
+  const me = W.me, you = W.you, out = [];
+  const nm = W.name(you), sv = (m, f) => W.say(you, m, f);
+
+  for (const r of W.requests) {
+    if (r.own !== me || r.to !== you) continue;
+    const a = W.answersYou[r.id];
+    const st = !a ? { k: 'wait', t: 'ждёт ответа' }
+      : a.s === 'acc' ? (a.done ? { k: 'done', t: 'сделано' } : { k: 'ok', t: sv('взял', 'взяла') })
+      : { k: 'no', t: sv('отказался', 'отказалась') };
+    out.push({ at: r.cr || r.upd || 0, kind: 'req', id: r.id, x: r,
+               e: r.kind === 'buy' ? '🛒' : '📨',
+               t: (r.kind === 'buy' ? 'Просил купить: ' : 'Просьба: ') + r.n,
+               sub: [r.note, r.d ? 'на ' + inDays(r.d) : ''].filter(Boolean).join(' · '), st });
+  }
+  for (const e of W.events) {
+    if (e.own !== me || e.with !== 'us') continue;
+    const a = W.rsvpYou[e.id];
+    const st = e.done ? { k: 'done', t: 'состоялось' }
+      : !a || a.off ? { k: 'wait', t: 'ждёт ответа' }
+      : a.s === 'yes' ? { k: 'ok', t: 'идёт' } : a.s === 'no' ? { k: 'no', t: 'не сможет' } : { k: 'wait', t: 'может быть' };
+    out.push({ at: e.cr || e.upd || 0, kind: 'ev', id: e.id, x: e, e: '📍',
+               t: 'Позвал' + W.say(me, '', 'а') + ': ' + e.t,
+               sub: [inDays(e.date), e.time, e.place].filter(Boolean).join(' · '), st });
+  }
+  for (const p of W.pledges) {
+    if (p.st === 'cancel') continue;
+    const mine = p.own === me;
+    if (!mine) continue;
+    const iGive = p.giver === me;
+    const st = p.st === 'given' ? { k: 'done', t: 'подарено' }
+      : p.st === 'proposed' ? { k: 'wait', t: 'ждёт ответа ' + W.gen(p.giver) }
+      : { k: 'ok', t: 'в силе' };
+    out.push({ at: p.cr || p.upd || 0, kind: 'pledge', id: p.id, x: p, e: '🤝',
+               t: (iGive ? 'Обещал' + W.say(me, '', 'а') + ': ' : 'Просил' + W.say(me, '', 'а') + ' обещание: ') + (p.reward || 'сюрприз'),
+               sub: pledgeText(W, p), st });
+  }
+  for (const k of W.kudos) if (k.own === me && k.to === you)
+    out.push({ at: k.upd || 0, kind: 'kudos', id: k.id, x: k, e: k.e || '❤️',
+               t: 'Поддержка ' + W.dat(you), sub: k.about || '', st: { k: 'done', t: 'доставлено' } });
+  for (const k of W.pokes) if (k.own === me && k.to === you)
+    out.push({ at: k.upd || 0, kind: 'poke', id: k.id, x: k, e: '🔔',
+               t: 'Напоминание: ' + (k.about || 'дело'), sub: '', st: { k: 'done', t: 'доставлено' } });
+
+  void nm;
+  return out.sort((a, b) => (a.st.k === 'wait' ? 0 : 1) - (b.st.k === 'wait' ? 0 : 1) || b.at - a.at);
+}
+
+/* ============================================================
    Лента пары: что происходило у неё, по времени.
    ============================================================ */
 export function feed(W) {
@@ -440,7 +494,10 @@ export function feed(W) {
     const ks = Object.keys(W.sumYou.days).sort().slice(-7);
     for (const k of ks) { const [a, d] = W.sumYou.days[k]; if (a && d >= a) out.push({ at: parse(k).getTime() + 20 * 3600e3, e: '⭕', t: nm + ' ' + sv('закрыл', 'закрыла') + ' день целиком', kind: 'full', k }); }
   }
-  return out.filter(x => x.at).sort((a, b) => b.at - a.at).slice(0, 40);
+  const hide = new Set(S.ui.feedHide || []);
+  return out.filter(x => x.at).map(x => ({ ...x, key: x.kind + ':' + Math.round(x.at / 1000) }))
+    .filter(x => !hide.has(x.key))
+    .sort((a, b) => b.at - a.at).slice(0, 40);
 }
 
 /* Ближайшие поводы: дни рождения и памятные даты. */

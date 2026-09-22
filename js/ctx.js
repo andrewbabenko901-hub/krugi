@@ -10,6 +10,7 @@ export const nav = {
   more: 'menu',          // menu | stat | badges | set | sync | help
   plan: { date: null, mode: 'task' },
   pledgeTab: 'me',
+  mail: 'in',            // переписка: in — входящие, out — отправленные, feed — лента
   link: null,            // какой код привязки показан: 'partner' | 'mine'
   wide: false,
   edit: false,           // правка главного экрана: виджеты можно таскать

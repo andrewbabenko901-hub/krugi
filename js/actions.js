@@ -497,6 +497,57 @@ A.reqdec = d => {
   toast('Отклонено. ' + W.name(W.you) + ' увидит отказ.');
 };
 
+/* ---------- переписка ---------- */
+A.mailtab = d => {
+  nav.mail = d.v;
+  if (d.v === 'feed') { S.seen.feed = now(); NOTE.markAll(); saveLocal(); }
+  render(); buzz(6);
+};
+A.reqping = d => {
+  const r = W.requests.find(x => x.id === d.id); if (!r) return;
+  PUSH.notifyPartner('🔔 Напоминание от ' + W.gen(W.me), r.n, 'pair');
+  buzz(10); toast(PUSH.partnerOn() ? 'Напомнил' + W.say(W.me, '', 'а') + '.' : W.name(W.you) + ' увидит просьбу при следующей сверке.');
+};
+A.reqcancel = (d, el) => {
+  const r = W.requests.find(x => x.id === d.id); if (!r) return;
+  if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = 'Точно отменить?'; return; }
+  remove('requests', r); toast('Просьба отменена.');
+};
+A.reqagain = d => {
+  const r = W.requests.find(x => x.id === d.id); if (!r) return;
+  put('requests', { to: r.to, n: r.n, note: r.note, kind: r.kind, d: W.today, vis: 'shared' });
+  PUSH.notifyPartner(r.kind === 'buy' ? '🛒 ' + W.name(W.me) + ' просит купить' : '📨 Просьба от ' + W.gen(W.me), r.n, 'pair');
+  toast('Отправлено снова.'); buzz(12);
+};
+A.reqedit = d => { SH.newQF(d.id); closeSheet(); openSheet(SH.sheetReqEdit, [], true); };
+A.qfsave = () => {
+  const F = SH.QF; if (!F) return;
+  const n = val('qfn');
+  if (!n) { toast('О чём просьба?'); return; }
+  const r = W.requests.find(x => x.id === F.id); if (!r) return;
+  put('requests', { ...r, n, note: val('qfnote'), d: F.d, kind: F.kind });
+  closeSheet(); toast('Просьба изменена.'); buzz(10);
+};
+A.qfkind = d => { if (SH.QF) { SH.QF.kind = d.v; refreshSheet(true); } };
+A.qfd = d => { if (SH.QF) { SH.QF.d = d.v; refreshSheet(true); } };
+A.evcancel = (d, el) => {
+  const e = W.events.find(x => x.id === d.id); if (!e) return;
+  if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = 'Точно отменить?'; return; }
+  remove('events', e); toast('План отменён.');
+};
+A.pcancel = (d, el) => {
+  const p = W.pledges.find(x => x.id === d.id); if (!p) return;
+  if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = 'Точно отменить?'; return; }
+  put('pledges', { ...p, st: 'cancel' }); toast('Обещание отменено.');
+};
+A.feedhide = d => {
+  const list = S.ui.feedHide || (S.ui.feedHide = []);
+  if (!list.includes(d.v)) list.push(d.v);
+  S.ui.feedHide = list.slice(-200);
+  changed('ui'); buzz(6);
+};
+A.feedback = () => { S.ui.feedHide = []; changed('ui'); toast('Лента снова полная.'); };
+
 /* ---------- полоска «пришло от пары» ---------- */
 A.notego = () => {
   const n = NOTE.cur; if (!n) return;

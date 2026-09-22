@@ -3,7 +3,7 @@ import { esc, fmt, pl, pln, addK, inDays, money } from './util.js';
 import { W, nav } from './ctx.js';
 import { S } from './store.js';
 import { av, miniRing, chk } from './ui.js';
-import { pledgeProg, pledgeText, goalNow, inbox, feed } from './model.js';
+import { pledgeProg, pledgeText, goalNow, inbox, feed, sent } from './model.js';
 import { whoTag, eventRow, header, MOODS } from './parts.js';
 
 /** Дней подряд, когда закрыли оба. */
@@ -101,12 +101,48 @@ export function vPair() {
       }).join('');
   }).join('');
 
-  // лента
-  const f = feed(W), seen = S.seen.feed || 0;
-  const fHTML = '<div class="card sec"><h3>Лента</h3>' + (f.length ? '<div class="feed">' + f.slice(0, 15).map(x =>
-    '<div class="fi' + (x.at > seen ? ' new' : '') + '"><span class="e">' + esc(x.e) + '</span><div class="x">' + esc(x.t) + '<small>' +
-    esc(new Date(x.at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</small></div></div>').join('') + '</div>'
-    : '<div class="sub">Здесь будет видно, что происходило у ' + esc(W.gen(you)) + ': закрытые дни, просьбы, обещания, поддержка.</div>') + '</div>';
+  // переписка: входящие, отправленные, лента — в одной карточке
+  const f = feed(W), seen = S.seen.feed || 0, out = sent(W), waiting = out.filter(x => x.st.k === 'wait').length;
+  const when = at => esc(new Date(at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }));
+  const tabm = nav.mail || 'in';
+
+  const outHTML = out.length ? out.map(x => {
+    const acts = [];
+    if (x.kind === 'req' && x.st.k === 'wait') {
+      acts.push('<button data-a="reqping" data-id="' + esc(x.id) + '">🔔 Напомнить</button>');
+      acts.push('<button data-a="reqedit" data-id="' + esc(x.id) + '">Изменить</button>');
+      acts.push('<button class="w" data-a="reqcancel" data-id="' + esc(x.id) + '">Отменить</button>');
+    }
+    if (x.kind === 'req' && x.st.k === 'no') acts.push('<button data-a="reqagain" data-id="' + esc(x.id) + '">Попросить снова</button>');
+    if (x.kind === 'ev' && !x.x.done) {
+      acts.push('<button data-a="evedit" data-id="' + esc(x.id) + '">Изменить</button>');
+      acts.push('<button class="w" data-a="evcancel" data-id="' + esc(x.id) + '">Отменить</button>');
+    }
+    if (x.kind === 'pledge' && x.x.st !== 'given') {
+      acts.push('<button data-a="pedit" data-id="' + esc(x.id) + '">Изменить</button>');
+      acts.push('<button class="w" data-a="pcancel" data-id="' + esc(x.id) + '">Отменить</button>');
+    }
+    return '<div class="ml"><span class="e">' + esc(x.e) + '</span><div class="x"><b>' + esc(x.t) + '</b>' +
+      (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') +
+      '<small class="mt">' + when(x.at) + '</small>' +
+      (acts.length ? '<div class="a">' + acts.join('') + '</div>' : '') + '</div>' +
+      '<span class="ms ' + x.st.k + '">' + esc(x.st.t) + '</span></div>';
+  }).join('') : '<div class="sub">Ты пока ничего не отправлял' + W.say(me, '', 'а') + '. Просьба, приглашение или обещание появятся здесь — вместе с ответом ' + esc(W.gen(you)) + '.</div>';
+
+  const feedHTML = f.length ? '<div class="feed">' + f.slice(0, 20).map(x =>
+    '<div class="fi' + (x.at > seen ? ' new' : '') + '"><span class="e">' + esc(x.e) + '</span><div class="x">' + esc(x.t) +
+    '<small>' + when(x.at) + '</small></div>' +
+    '<button class="fx" data-a="feedhide" data-v="' + esc(x.key) + '" aria-label="Убрать из ленты">✕</button></div>').join('') + '</div>' +
+    ((S.ui.feedHide || []).length ? '<div class="srow"><button data-a="feedback">Вернуть убранное (' + S.ui.feedHide.length + ')</button></div>' : '')
+    : '<div class="sub">Здесь будет видно, что происходило у ' + esc(W.gen(you)) + ': закрытые дни, просьбы, обещания, поддержка.</div>';
+
+  const mailHTML = '<div class="card sec"><div class="ch"><h3>Переписка</h3>' +
+    '<button class="lnk" data-a="pmodego" data-v="req">＋ попросить</button></div>' +
+    '<div class="seg three" style="margin-top:.5rem">' +
+    '<button data-a="mailtab" data-v="in" aria-pressed="' + (tabm === 'in') + '">Входящие' + (ib.length ? ' ' + ib.length : '') + '</button>' +
+    '<button data-a="mailtab" data-v="out" aria-pressed="' + (tabm === 'out') + '">Отправленные' + (waiting ? ' ' + waiting : '') + '</button>' +
+    '<button data-a="mailtab" data-v="feed" aria-pressed="' + (tabm === 'feed') + '">Лента</button></div>' +
+    '<div style="margin-top:.6rem">' + (tabm === 'in' ? ibHTML : tabm === 'out' ? outHTML : feedHTML) + '</div></div>';
 
   // круги пары
   const yc = W.yourCircles;
@@ -117,9 +153,9 @@ export function vPair() {
         c.k === 'mood' && W.cval(c, W.today) ? MOODS[W.cval(c, W.today) - 1][0] : null) + '</button>';
     }).join('') + '</div>' : '<div class="sub" style="margin-top:0">Все круги ' + esc(W.gen(you)) + ' личные.</div>') + '</div>' : '';
 
-  const main = top + '<div class="card sec"><h3>Входящие' + (ib.length ? ' · ' + ib.length : '') + '</h3>' + ibHTML + '</div>' + plHTML +
+  const main = top + mailHTML + plHTML +
     (shHTML ? '<div class="card sec"><h3>Общие круги сегодня</h3><div class="sub">Закрывает тот, кто сделал. Колокольчик — мягкое напоминание, одно в день.</div>' + shHTML + '</div>' : '');
-  const side = goalHTML + evHTML + ycHTML + fHTML;
+  const side = goalHTML + evHTML + ycHTML;
   return header('общий доступ', 'Вместе', '<button class="ghost" data-a="pmodego" data-v="req">попросить</button>') +
     (nav.wide ? '<div class="two-col"><div>' + main + '</div><div class="side" style="margin-top:1.1rem">' + side + '</div></div>' : main + side);
 }

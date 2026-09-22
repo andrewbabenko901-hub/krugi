@@ -406,6 +406,26 @@ export function sheetCircleSetup() {
     '<div class="srow"><button data-a="close">Отмена</button></div>';
 }
 
+/* ---------- правка отправленной просьбы ---------- */
+export let QF = null;
+export function newQF(id) {
+  const r = W.requests.find(x => x.id === id);
+  QF = r ? { id: r.id, n: r.n, note: r.note || '', kind: r.kind || 'task', d: r.d || W.today } : null;
+}
+export function sheetReqEdit() {
+  if (!QF) return '<div class="sn">Просьбы уже нет</div><div class="srow"><button data-a="close">Закрыть</button></div>';
+  return '<div class="sn">Изменить просьбу</div>' +
+    '<div class="fld"><label>Что это</label>' + pick('qfkind', QF.kind, [['task', '📋 дело'], ['buy', '🛒 купить']]) + '</div>' +
+    '<div class="fld"><label>' + (QF.kind === 'buy' ? 'Что купить' : 'О чём просишь') + '</label>' +
+    '<input type="text" id="qfn" value="' + esc(QF.n) + '"></div>' +
+    '<div class="fld"><label>Уточнение</label><input type="text" id="qfnote" value="' + esc(QF.note) + '" placeholder="номер 2045, до 18:00"></div>' +
+    '<div class="fld"><label>На какой день</label>' +
+    pick('qfd', QF.d, [[W.today, 'сегодня'], [addK(W.today, 1), 'завтра'], [addK(W.today, 2), 'послезавтра']]) + '</div>' +
+    '<div class="srow"><button class="k" data-a="qfsave">Сохранить</button>' +
+    '<button class="w" data-a="reqcancel" data-id="' + esc(QF.id) + '">Отменить просьбу</button></div>' +
+    '<div class="srow"><button data-a="close">Закрыть</button></div>';
+}
+
 /* ---------- просьба: куда её положить ----------
    Просьба не сваливается в случайный круг: тот, кого попросили, сам
    решает, в какой круг и на какой день она встанет. Для покупки
