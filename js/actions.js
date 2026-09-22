@@ -21,6 +21,7 @@ import { DEFG, DEFS, EMO, PAL } from './parts.js';
 import { forgetMoves } from './faces.js';
 import * as PUSH from './push.js';
 import * as NOTE from './note.js';
+import * as SHOP from './shop.js';
 
 let render = () => {};
 export function setRender(fn) { render = fn; }
@@ -334,6 +335,54 @@ A.dup = d => { const i = +d.v, a = S.ui.dash; if (i > 0) { [a[i - 1], a[i]] = [a
 A.ddown = d => { const i = +d.v, a = S.ui.dash; if (i < a.length - 1) { [a[i + 1], a[i]] = [a[i], a[i + 1]]; changed('ui'); } };
 A.dcol = d => { S.ui.cols = +d.v; changed('ui'); };
 A.dreset = () => { S.ui.dash = defaultUI().dash; changed('ui'); toast('Главный экран — как по умолчанию.'); };
+
+/* ---------- живой список покупок ---------- */
+function shopCircleFor() {
+  const c = SHOP.myShopCircle();
+  if (c) return c;
+  return put('circles', { n: 'Покупки', i: '🛒', col: '#C98A12', k: 'shop', vis: 'shared', per: 'day' });
+}
+function addShop(name) {
+  // «молоко, хлеб, яйца» — сразу три позиции
+  const parts = String(name || '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const c = shopCircleFor();
+  let last = null;
+  for (const n of parts) {
+    last = put('tasks', { c: c.id, n, w: c._shared ? 'both' : W.me, r: null, d: W.today, q: '', pr: 0, st: '', prv: 0 }, true);
+    SHOP.markJust(last.id);
+  }
+  changed('local'); buzz(10);
+  if (parts.length > 1) toast('Добавлено ' + parts.length + '.');
+  return last;
+}
+A.shopadd = (d, el) => {
+  const id = d.v || 'shopi', inp = document.getElementById(id);
+  if (!inp) return;
+  const t = addShop(inp.value);
+  if (!t) { inp.focus(); return; }
+  inp.value = '';
+  render();
+  setTimeout(() => { const i = document.getElementById(id); if (i) i.focus(); }, 30);
+  void el;
+};
+A.shopq = d => { addShop(d.v); render(); toast('«' + d.v + '» в списке.'); };
+A.shopbuy = d => {
+  const t = W.taskById[d.id]; if (!t) return;
+  const was = SHOP.boughtAt(t);
+  SHOP.markJust(t.id);
+  if (was) { setMark(t.id, was, 'open'); buzz(8); return; }
+  setMark(t.id, W.today, 'done'); buzz([10, 40, 10]);
+  // запоминаем, что это уже покупали: потом подскажем в один тап
+  const list = (S.ui.shopOften || []).filter(n => n.toLowerCase() !== t.n.toLowerCase());
+  list.unshift(t.n); S.ui.shopOften = list.slice(0, 16); changed('ui');
+  const left = SHOP.shopItems().filter(x => !x.b).length;
+  if (!left) { if (S.ui.fx) confetti(); toast('Всё куплено. Красота.'); }
+};
+A.shopfold = () => { S.ui.shopOpen = S.ui.shopOpen === 0 ? 1 : 0; changed('ui'); buzz(8); };
+A.shoph = () => { S.ui.shopH = ((S.ui.shopH || 0) + 1) % 3; changed('ui'); buzz(6); };
+A.shopwide = () => { S.ui.shopWide = S.ui.shopWide ? 0 : 1; changed('ui'); render(); };
+A.shopgrp = () => { S.ui.shopGrp = S.ui.shopGrp ? 0 : 1; changed('ui'); };
 
 /* ---------- план ---------- */
 A.pdate = d => { nav.plan.date = d.v; render(); };

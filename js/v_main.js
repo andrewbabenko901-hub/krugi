@@ -13,6 +13,7 @@ import { sync } from './sync.js';
 import { BADGES, pledgeProg, pledgeText, goalNow, inbox, feed, upcomingDates } from './model.js';
 import { cellHTML, cellSize, segs, whoTag, eventRow, syncPill, MOODS } from './parts.js';
 import { faceOf, weekRing, weekCircles } from './faces.js';
+import { shopBox } from './shop.js';
 
 export const WIDGETS = {
   strip:   { t: 'Лента дней', d: 'Дни недели с полосками закрытого' },
@@ -27,7 +28,7 @@ export const WIDGETS = {
   partner: { t: 'Круги пары', d: 'Как день у второй половины', side: 1 },
   events:  { t: 'Ближайшие планы', d: 'Прогулки, свидания, поездки', side: 1 },
   dates:   { t: 'Поводы', d: 'Дни рождения и важные даты', side: 1 },
-  shop:    { t: 'Что купить', d: 'Открытые покупки на день', side: 1 },
+  shop:    { t: 'Что купить', d: 'Живой список: отметил — уехало вниз, добавил — встало сверху', side: 1 },
   feed:    { t: 'Лента пары', d: 'Что происходило у второй половины', side: 1 },
   badge:   { t: 'Следующее достижение', d: 'Ближайший значок и сколько осталось', side: 1 },
   week:    { t: 'Мини-неделя', d: 'Столбики по дням: ты и пара' },
@@ -214,21 +215,8 @@ R.dates = () => {
       : '<div class="sub">В ближайшие два месяца поводов нет. Дни рождения и годовщины добавляются в «Покупках» → «Поводы».</div>') + '</div>';
 };
 
-R.shop = () => {
-  const k = nav.VD, shops = W.myCircles.filter(c => c.k === 'shop');
-  const open = [];
-  for (const c of shops) for (const t of W.tasksOf(c.id, k)) if (!W.isDone(t, k)) open.push({ t, c });
-  const sum = open.reduce((a, x) => a + (x.t.pr || 0), 0);
-  const plan = W.wishes.filter(w => w.st === 'plan');
-  return '<div class="card sec"><div class="ch"><h3>Что купить</h3><button class="lnk" data-a="tab" data-v="wish">покупки ›</button></div>' +
-    (open.length ? '<ul style="margin-top:.4rem">' + open.slice(0, 5).map(x => '<li class="t"><button class="bx" data-a="tk" data-id="' + esc(x.t.id) + '" data-k="' + k + '">' + chk() +
-      '</button><span class="nm2"><span class="ttl">' + esc(x.t.n) + '</span><span class="mini">' + (x.t.q ? '<span class="tagi">' + esc(x.t.q) + '</span>' : '') +
-      (x.t.st ? '<span class="tagi">' + esc(x.t.st) + '</span>' : '') + '</span></span>' + (x.t.pr ? '<span class="q2">' + esc(money(x.t.pr)) + '</span>' : '') + '</li>').join('') + '</ul>' +
-      (open.length > 5 ? '<div class="sub">и ещё ' + (open.length - 5) + '</div>' : '') + (sum ? '<div class="sum"><span>Осталось на</span><b>' + esc(money(sum)) + '</b></div>' : '')
-      : '<div class="sub">На сегодня всё куплено или список пуст.</div>') +
-    (plan.length ? '<div class="sub">В плане покупок: ' + plan.length + ' ' + pl(plan.length, ['карточка', 'карточки', 'карточек']) + ' на ' +
-      esc(money(plan.reduce((a, w) => a + (w.pr || 0) * (w.qty > 1 ? w.qty : 1), 0))) + '</div>' : '') + '</div>';
-};
+R.shop = () => shopBox({ widget: true });
+
 
 R.feed = () => {
   const f = feed(W).slice(0, 5), seen = S.seen.feed || 0;

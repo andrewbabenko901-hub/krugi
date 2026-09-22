@@ -16,6 +16,8 @@ import { start as startSync, onSync, schedulePush, setSummary, cycle } from './s
 import { inbox, feed } from './model.js';
 import * as NOTE from './note.js';
 import * as PUSH from './push.js';
+import { staleShop } from './shop.js';
+import { remove } from './store.js';
 import { todayKey } from './util.js';
 
 const $v = () => document.getElementById('v');
@@ -129,10 +131,18 @@ onSync(kind => {
 setSummary(() => { try { return W ? W.sum() : null; } catch { return null; } });
 setRender(render);
 
+/* Купленное само уходит из списка через пару дней — на старте и на смене дня. */
+function sweepShop() {
+  if (!S || !W) return;
+  const old = staleShop();
+  if (!old.length) return;
+  for (const t of old) remove('tasks', t);       // remove сам сохраняет и зовёт перерисовку
+}
+
 // полночь (точнее, 04:00): новый день — новый мир
 setInterval(() => {
   const t = todayKey();
-  if (t !== lastDay) { if (nav.VD === lastDay) nav.VD = t; lastDay = t; rebuild(); render(); }
+  if (t !== lastDay) { if (nav.VD === lastDay) nav.VD = t; lastDay = t; rebuild(); sweepShop(); render(); }
 }, 60000);
 
 /* ---------- широкий экран ---------- */
@@ -253,7 +263,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && isSheetOpen()) { closeSheet(); return; }
   if (e.key !== 'Enter' || e.shiftKey) return;
   const id = e.target.id;
-  const map = { gi: 'gadd', fn: 'fadd', fq: 'fadd', et: 'eadd', qn: 'qadd', cexact: 'cexact', mnote: 'mnote', keyin: 'keyset' };
+  const map = { gi: 'gadd', fn: 'fadd', fq: 'fadd', et: 'eadd', qn: 'qadd', cexact: 'cexact', mnote: 'mnote', keyin: 'keyset',
+                shopi: 'shopadd', shopiw: 'shopadd' };
   if (map[id]) { e.preventDefault(); const b = document.querySelector('[data-a="' + map[id] + '"]'); if (b) b.click(); }
 });
 
@@ -262,7 +273,7 @@ const who = new URLSearchParams(location.search).get('who');
 const me = deviceMe() || (who === 'andrey' || who === 'diana' ? who : null);
 if (me) { loadState(me); rebuild(); }
 render(true);
-if (S) { startSync(); PUSH.syncGot().catch(() => {}); }
+if (S) { startSync(); PUSH.syncGot().catch(() => {}); setTimeout(sweepShop, 1200); }
 
 const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 if ('serviceWorker' in navigator && secure) {

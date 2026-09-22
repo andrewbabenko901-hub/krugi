@@ -4,6 +4,7 @@ import { W } from './ctx.js';
 import { S } from './store.js';
 import { pick } from './ui.js';
 import { wishCard, header } from './parts.js';
+import { shopBox, shopStat } from './shop.js';
 import { upcomingDates } from './model.js';
 
 export function filteredWishes() {
@@ -49,15 +50,18 @@ export function vWish() {
   const list = filteredWishes();
   const sum = list.filter(w => w.st !== 'bought').reduce((a, w) => a + (w.pr || 0) * (w.qty > 1 ? w.qty : 1), 0);
   const planSum = list.filter(w => w.st === 'plan').reduce((a, w) => a + (w.pr || 0) * (w.qty > 1 ? w.qty : 1), 0);
-  const shops = W.myCircles.filter(c => c.k === 'shop');
-  const shopLine = shops.length ? '<div class="sub">Список на день — в кругах: ' + shops.map(c =>
-    '<button data-a="circle" data-id="' + esc(c.id) + '" style="text-decoration:underline;color:var(--acc)">' + esc(c.i + ' ' + c.n) + '</button>').join(', ') + '.</div>' : '';
-  return header('карточки, ссылки, поводы', 'Покупки', '<button class="ghost" data-a="wnew">＋ карточка</button>') +
+  const st = shopStat();
+  const stat = st ? '<div class="sbar"><i style="width:' + Math.round(st.p * 100) + '%"></i>' +
+    '<span>' + (st.d === st.a ? 'всё куплено 🎉' : 'куплено ' + st.d + ' из ' + st.a +
+      (st.sum ? ' · осталось на ' + esc(money(st.sum)) : '')) + '</span></div>' : '';
+  return header('список и карточки', 'Покупки', '<button class="ghost" data-a="wnew">＋ карточка</button>') +
+    stat + shopBox({}) +
+    '<div class="wsep"><b>Карточки</b><span>ссылки, фото, цены, поводы</span></div>' +
     occ + boards + filt +
     '<div class="card sec"><div class="stop"><div class="big">' + list.length + ' ' + pl(list.length, ['карточка', 'карточки', 'карточек']) + '</div>' +
     '<div class="sm">' + (sum ? 'на ' + esc(money(sum)) : '') + (planSum ? '<br>в плане ' + esc(money(planSum)) : '') + '</div></div>' +
     '<div class="sub">Ссылка, фото, цена, для кого и к какому поводу. Подарок-сюрприз для ' + esc(W.gen(W.you)) + ' ' + W.say(W.you, 'ему', 'ей') +
-    ' не виден совсем — он шифруется. «Я подарю» на ' + W.say(W.you, 'его', 'её') + ' хотелке тоже видно только тебе.</div>' + shopLine + '</div>' +
+    ' не виден совсем — он шифруется. «Я подарю» на ' + W.say(W.you, 'его', 'её') + ' хотелке тоже видно только тебе.</div></div>' +
     (list.length ? '<div class="wgrid">' + list.map(wishCard).join('') + '</div>'
       : '<div class="card sec"><h3>Пусто</h3><div class="sub">Вставь ссылку на товар — магазин подставится сам. Можно добавить фото ссылкой на картинку.</div>' +
         '<button class="big-btn" data-a="wnew">Добавить карточку</button></div>');

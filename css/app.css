@@ -841,3 +841,57 @@ html[data-vivid="1"] nav{border-top-color:transparent}
 .embody .emos.big{max-height:none}
 .emos.big{grid-template-columns:repeat(8,1fr)}
 @media (min-width:30rem){.emos.big{grid-template-columns:repeat(10,1fr)}}
+
+/* ============================================================
+   ЖИВОЙ СПИСОК ПОКУПОК
+   Кружок слева — нажал, и позиция уехала вниз с галочкой.
+   ============================================================ */
+.shopw .ch{align-items:center;gap:.5rem}
+.shopw .ch h3{flex:0 0 auto}
+.shopw .scnt{flex:1;min-width:0;font-size:.7rem;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shopw .ch .lnk{flex:0 0 auto;padding:.1rem .25rem}
+.sbox{margin-top:.5rem;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  border-radius:.7rem;background:var(--line2);padding:.25rem}
+.sbox.full{max-height:none;background:transparent;padding:0}
+.srow2{display:flex;align-items:center;gap:.6rem;padding:.45rem .5rem;border-radius:.6rem;background:var(--pap);
+  margin-bottom:.22rem;transition:opacity .2s,transform .2s}
+.sbox.full .srow2{border:1px solid var(--line);margin-bottom:.3rem}
+.srow2:last-child{margin-bottom:0}
+.srow2 .sbx{width:1.55rem;height:1.55rem;flex:0 0 1.55rem;border-radius:50%;border:2px solid var(--c);
+  display:grid;place-items:center;color:#fff;font-size:.78rem;font-weight:700;background:transparent;
+  transition:background .18s,transform .12s}
+.srow2 .sbx:active{transform:scale(.85)}
+.srow2 .sbx.on{background:var(--c)}
+.srow2 .st2{flex:1;min-width:0;display:flex;flex-direction:column}
+.srow2 .st2 b{font-size:.86rem;font-weight:500;line-height:1.25;overflow-wrap:anywhere}
+.srow2 .st2 small{font-size:.66rem;color:var(--mut);margin-top:.05rem}
+.srow2 .sed{flex:0 0 auto;color:var(--mut);font-size:.8rem;padding:.2rem .3rem}
+.srow2.done{opacity:.55}
+.srow2.done .st2 b{text-decoration:line-through}
+.sdiv{font-size:.62rem;color:var(--mut);text-align:center;padding:.45rem 0 .3rem;letter-spacing:.02em}
+.sempty{display:flex;flex-direction:column;align-items:center;gap:.3rem;color:var(--mut);font-size:.76rem;
+  text-align:center;padding:1.1rem .6rem;line-height:1.4}
+.sempty span{font-size:1.6rem}
+.sadd{display:flex;gap:.4rem;margin-top:.5rem}
+.sadd input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:.6rem;padding:.6rem .7rem;font-size:.93rem}
+.sadd button{flex:0 0 2.8rem;border-radius:.6rem;background:var(--ink);color:var(--inv);font-size:1.15rem;font-weight:600;
+  display:grid;place-items:center}
+.sadd button:active{transform:scale(.94)}
+.sbar{position:relative;background:var(--pap);border:1px solid var(--line);border-radius:.8rem;overflow:hidden;
+  margin-top:.8rem;box-shadow:var(--sh)}
+.sbar i{position:absolute;inset:0 auto 0 0;background:var(--ok);opacity:.16;transition:width .5s cubic-bezier(.25,1,.35,1)}
+.sbar span{position:relative;display:block;padding:.55rem .7rem;font-size:.78rem;font-weight:500}
+.wsep{display:flex;align-items:baseline;gap:.5rem;margin-top:1.3rem;padding-bottom:.1rem}
+.wsep b{font-size:1rem;font-weight:600}
+.wsep span{font-size:.7rem;color:var(--mut)}
+@media (prefers-reduced-motion:no-preference){
+  html[data-fx="1"] .srow2.just{animation:slid .45s cubic-bezier(.3,1.2,.4,1)}
+}
+@keyframes slid{0%{transform:translateY(-.5rem);opacity:.3}100%{transform:none;opacity:1}}
+/* на широком экране список может занять всю ширину */
+@media (min-width:64rem){
+  .shopw.wide{grid-column:1 / -1}
+}
+.srow2 .sbx .sic{font-style:normal;font-size:.92rem;line-height:1;filter:saturate(.9)}
+.srow2 .sbx.on .sic{display:none}
+.sdiv.st{text-align:left;padding-left:.35rem;font-weight:600;color:var(--ink);opacity:.75;text-transform:none}
