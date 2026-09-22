@@ -901,3 +901,7 @@ html[data-vivid="1"] nav{border-top-color:transparent}
 .splus:active{transform:scale(.9)}
 .sadd .sx{flex:0 0 2.2rem;border:1px solid var(--line);border-radius:.6rem;color:var(--mut);font-size:.9rem;
   display:grid;place-items:center;background:var(--pap)}
+.shopw .plusb{flex:0 0 auto;width:1.65rem;height:1.65rem;border-radius:50%;background:var(--ink);color:var(--inv);
+  font-size:.95rem;line-height:1;display:grid;place-items:center;transition:transform .12s;margin-right:.1rem}
+.shopw .plusb:active{transform:scale(.88)}
+.shopw .sadd{margin-top:.6rem}

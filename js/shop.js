@@ -118,15 +118,14 @@ function row(x, opts) {
 export let adding = 0;
 export const setAdding = v => { adding = v || 0; };
 
-/** Поле быстрого добавления: пишешь и оно встаёт сверху. */
-function addBox(id) {
-  if (adding !== id)
-    return '<div class="sadd closed"><button class="splus" data-a="shopplus" data-v="' + id + '" aria-label="Добавить покупку">＋</button></div>';
+/** Строка ввода. Появляется под шапкой, когда нажат плюсик. */
+function addBox(id, items) {
+  if (adding !== id) return '';
   const cs = shopCircles();
   return '<div class="sadd"><input type="text" id="' + id + '" placeholder="Что купить" autocomplete="off">' +
-    '<button class="k" data-a="shopadd" data-v="' + id + '" aria-label="Добавить">＋</button>' +
-    '<button class="sx" data-a="shopclose" aria-label="Закрыть">✕</button></div>' +
-    '<div class="sub">Можно сразу несколько через запятую' +
+    '<button class="k" data-a="shopadd" data-v="' + id + '" aria-label="Добавить">＋</button></div>' +
+    often(items) +
+    '<div class="sub">Сразу несколько — через запятую' +
     (cs.length > 1 ? '. Встанет в «' + esc((myShopCircle() || cs[0]).n) + '»' : '') + '.</div>';
 }
 
@@ -135,7 +134,7 @@ function often(items) {
   const have = new Set(items.filter(x => !x.b).map(x => x.t.n.toLowerCase()));
   const list = (S.ui.shopOften || []).filter(n => !have.has(n.toLowerCase())).slice(0, 8);
   if (!list.length) return '';
-  return '<div class="sub" style="margin-top:.6rem">Часто берём</div><div class="pick">' +
+  return '<div class="pick" style="margin-top:.45rem">' +
     list.map(n => '<button class="pb" data-a="shopq" data-v="' + esc(n) + '">＋ ' + esc(n) + '</button>').join('') + '</div>';
 }
 
@@ -168,26 +167,26 @@ export function shopBox(opts = {}) {
           done.map(x => row(x, opts)).join('') : '')
       : '<div class="sempty"><span>🧺</span>Список пуст. Напиши, что нужно купить — встанет сверху.</div>') + '</div>';
 
+  const fid = opts.widget ? 'shopiw' : 'shopi';
   const head = '<div class="ch"><h3>' + (opts.widget ? 'Что купить' : 'Список покупок') + '</h3>' +
     '<span class="scnt">' + (left.length ? left.length + ' ' + pl(left.length, ['позиция', 'позиции', 'позиций']) +
       (sum ? ' · ' + esc(money(sum)) : '') : 'всё куплено') + '</span>' +
+    '<button class="plusb" data-a="' + (adding === fid ? 'shopclose' : 'shopplus') + '" data-v="' + fid +
+      '" aria-label="Добавить покупку">' + (adding === fid ? '✕' : '＋') + '</button>' +
     (opts.widget
       ? '<button class="lnk" data-a="shoph" aria-label="Размер списка">⇕</button>' +
         '<button class="lnk" data-a="shopfold">' + (open ? 'свернуть' : 'развернуть') + '</button>'
       : '') + '</div>';
 
   if (opts.widget && !open)
-    return '<div class="card sec shopw' + wide + '">' + head +
+    return '<div class="card sec shopw' + wide + '">' + head + addBox(fid, items) +
       '<div class="sub">' + (left.length ? 'Ближайшее: ' + esc(left.slice(0, 3).map(x => x.t.n).join(', ')) +
         (left.length > 3 ? ' и ещё ' + (left.length - 3) : '') : 'Пока ничего не нужно.') + '</div></div>';
 
-  return '<div class="card sec shopw' + wide + '">' + head +
+  return '<div class="card sec shopw' + wide + '">' + head + addBox(fid, items) +
     (!opts.widget && stores.length > 1
       ? '<div class="pick" style="margin-top:.5rem"><button class="pb" data-a="shopgrp" aria-pressed="' + !!S.ui.shopGrp + '">по магазинам</button></div>'
-      : '') + box +
-    addBox(opts.widget ? 'shopiw' : 'shopi') + often(items) +
-    (opts.widget ? '' : '<div class="sub">Нажал кружок — куплено, позиция уехала вниз и через пару дней исчезнет сама. ' +
-      'Цену, количество и магазин можно дописать карандашом.</div>') + '</div>';
+      : '') + box + '</div>';
 }
 
 /** Полоска «куплено столько-то из стольких» для шапки раздела. */
