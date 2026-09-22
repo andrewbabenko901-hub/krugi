@@ -895,3 +895,9 @@ html[data-vivid="1"] nav{border-top-color:transparent}
 .srow2 .sbx .sic{font-style:normal;font-size:.92rem;line-height:1;filter:saturate(.9)}
 .srow2 .sbx.on .sic{display:none}
 .sdiv.st{text-align:left;padding-left:.35rem;font-weight:600;color:var(--ink);opacity:.75;text-transform:none}
+.sadd.closed{margin-top:.55rem}
+.splus{width:2.4rem;height:2.4rem;border-radius:50%;background:var(--ink);color:var(--inv);font-size:1.3rem;
+  display:grid;place-items:center;box-shadow:var(--sh);transition:transform .12s}
+.splus:active{transform:scale(.9)}
+.sadd .sx{flex:0 0 2.2rem;border:1px solid var(--line);border-radius:.6rem;color:var(--mut);font-size:.9rem;
+  display:grid;place-items:center;background:var(--pap)}

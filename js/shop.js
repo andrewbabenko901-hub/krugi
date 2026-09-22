@@ -114,12 +114,20 @@ function row(x, opts) {
     '</div>';
 }
 
+/* Пока не нужен — только плюсик. Нажал, и поле появилось прямо под списком. */
+export let adding = 0;
+export const setAdding = v => { adding = v || 0; };
+
 /** Поле быстрого добавления: пишешь и оно встаёт сверху. */
 function addBox(id) {
+  if (adding !== id)
+    return '<div class="sadd closed"><button class="splus" data-a="shopplus" data-v="' + id + '" aria-label="Добавить покупку">＋</button></div>';
   const cs = shopCircles();
-  return '<div class="sadd"><input type="text" id="' + id + '" placeholder="Что купить — можно через запятую" autocomplete="off">' +
-    '<button class="k" data-a="shopadd" data-v="' + id + '">＋</button></div>' +
-    (cs.length > 1 ? '<div class="sub">Встанет в «' + esc((myShopCircle() || cs[0]).n) + '».</div>' : '');
+  return '<div class="sadd"><input type="text" id="' + id + '" placeholder="Что купить" autocomplete="off">' +
+    '<button class="k" data-a="shopadd" data-v="' + id + '" aria-label="Добавить">＋</button>' +
+    '<button class="sx" data-a="shopclose" aria-label="Закрыть">✕</button></div>' +
+    '<div class="sub">Можно сразу несколько через запятую' +
+    (cs.length > 1 ? '. Встанет в «' + esc((myShopCircle() || cs[0]).n) + '»' : '') + '.</div>';
 }
 
 /** Частое: то, что уже покупали — одно нажатие, и снова в списке. */

@@ -356,6 +356,15 @@ function addShop(name) {
   if (parts.length > 1) toast('Добавлено ' + parts.length + '.');
   return last;
 }
+A.shopplus = d => {
+  SHOP.setAdding(d.v); render();
+  setTimeout(() => { const i = document.getElementById(d.v); if (i) i.focus(); }, 40);
+};
+A.shopclose = () => {
+  // пока курсор в поле, перерисовка откладывается — сначала снимаем фокус
+  const a = document.activeElement; if (a && a.blur) a.blur();
+  SHOP.setAdding(0); render(true);
+};
 A.shopadd = (d, el) => {
   const id = d.v || 'shopi', inp = document.getElementById(id);
   if (!inp) return;
